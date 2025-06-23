@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction, connection
 from django.contrib import messages
-from django.db.models import Count, Sum, Q
+from django.db.models import Count, Sum, Q, F, FloatField, Case, When, Value
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 import json
 import random
 from datetime import timedelta
@@ -17,8 +20,31 @@ from .models import (
 # Create your views here.
 
 def listar_leads(request):
-    leads = Lead.objects.all().order_by('-fecha_ingreso')
-    return render(request, 'gestion/listar_leads.html', {'leads': leads})
+    sort_by = request.GET.get('sort', 'fecha_ingreso')
+    direction = request.GET.get('direction', 'desc')
+
+    valid_sort_fields = [
+        'nombre_completo', 'fecha_ingreso', 'estado_lead', 
+        'id_usuario_atencion__nombre_usuario', 'id_medio_contacto__nombre_medio'
+    ]
+    
+    # Validar parámetros para seguridad
+    if sort_by not in valid_sort_fields:
+        sort_by = 'fecha_ingreso'
+    if direction not in ['asc', 'desc']:
+        direction = 'desc'
+
+    # Construir el campo de ordenamiento
+    order_by_field = f'-{sort_by}' if direction == 'desc' else sort_by
+    
+    leads = Lead.objects.select_related('id_usuario_atencion', 'id_medio_contacto').all().order_by(order_by_field)
+    
+    context = {
+        'leads': leads,
+        'current_sort': sort_by,
+        'current_direction': direction,
+    }
+    return render(request, 'gestion/listar_leads.html', context)
 
 def listar_matriculas(request):
     matriculas = Matricula.objects.select_related(
@@ -58,7 +84,7 @@ def editar_cliente(request, cliente_id):
     lead = cliente.id_lead
 
     if request.method == 'POST':
-        cliente_form = ClienteEditForm(request.POST, instance=cliente)
+        cliente_form = ClienteEditForm(request.POST, request.FILES, instance=cliente)
         lead_form = LeadEditForm(request.POST, instance=lead)
         if cliente_form.is_valid() and lead_form.is_valid():
             cliente_form.save()
@@ -191,13 +217,15 @@ def convertir_lead_a_cliente(request, lead_id):
         return redirect('gestion:listar_leads')
 
     if request.method == 'POST':
-        form = ConvertirLeadForm(request.POST)
+        form = ConvertirLeadForm(request.POST, request.FILES)
         if form.is_valid():
             # Crear Cliente
             cliente = Cliente.objects.create(
                 id_lead=lead,
                 dni=form.cleaned_data['dni'],
-                email=form.cleaned_data['email']
+                email=form.cleaned_data['email'],
+                archivo_dni=form.cleaned_data.get('archivo_dni'),
+                archivo_partida=form.cleaned_data.get('archivo_partida')
             )
 
             # Crear Matrícula
@@ -264,9 +292,30 @@ def dashboard(request):
         num_leads=Count('lead')
     ).order_by('-num_leads')
 
-    conversiones_por_asesor = Usuario.objects.annotate(
-        num_conversiones=Count('leads_atendidos', filter=Q(leads_atendidos__estado_lead='Convertido'))
-    ).order_by('-num_conversiones')
+    now = timezone.now()
+    conversiones_por_asesor = Usuario.objects.filter(rol='Asesor').annotate(
+        total_leads=Count('leads_atendidos', distinct=True),
+        conversiones_totales=Count(
+            'leads_atendidos',
+            filter=Q(leads_atendidos__estado_lead='Convertido'),
+            distinct=True
+        ),
+        conversiones_mes=Count(
+            'leads_atendidos',
+            filter=Q(
+                leads_atendidos__estado_lead='Convertido',
+                leads_atendidos__cliente__matricula__fecha_inscripcion__year=now.year,
+                leads_atendidos__cliente__matricula__fecha_inscripcion__month=now.month
+            ),
+            distinct=True
+        )
+    ).annotate(
+        tasa_conversion_final=Case(
+            When(total_leads=0, then=Value(0.0)),
+            default=(F('conversiones_totales') * 100.0 / F('total_leads')),
+            output_field=FloatField()
+        )
+    ).order_by('-conversiones_totales')
 
     ingresos_por_programa = ProgramaAcademico.objects.annotate(
         total_recaudado=Sum('matricula__pago__monto')
@@ -280,26 +329,6 @@ def dashboard(request):
         num_alumnos=Count('provincia__distrito__lead__cliente')
     ).order_by('-num_alumnos').filter(num_alumnos__gt=0)
 
-    # --- PREPARACIÓN DE DATOS PARA GRÁFICOS ---
-    
-    # Gráfico 1: Leads por Canal de Marketing
-    leads_canal_data = {
-        "labels": [item.nombre_medio for item in leads_por_canal],
-        "data": [item.num_leads for item in leads_por_canal],
-    }
-
-    # Gráfico 2: Conversiones por Asesor
-    conversiones_asesor_data = {
-        "labels": [item.nombre_usuario for item in conversiones_por_asesor],
-        "data": [item.num_conversiones for item in conversiones_por_asesor],
-    }
-    
-    # Gráfico 3: Ingresos por Programa
-    ingresos_programa_data = {
-        "labels": [item.nombre_programa for item in ingresos_por_programa if item.total_recaudado is not None],
-        "data": [float(item.total_recaudado) for item in ingresos_por_programa if item.total_recaudado is not None],
-    }
-
     context = {
         'total_alumnos': total_alumnos,
         'monto_recaudado': monto_recaudado,
@@ -307,15 +336,82 @@ def dashboard(request):
         'tasa_retencion': tasa_retencion,
         'programas_populares': programas_populares,
         'alumnos_por_depto': alumnos_por_depto,
-        # Pasando datos para gráficos (además de los datos tabulares)
         'leads_por_canal': leads_por_canal,
         'conversiones_por_asesor': conversiones_por_asesor,
         'ingresos_por_programa': ingresos_por_programa,
-        'leads_canal_data_json': json.dumps(leads_canal_data, cls=DjangoJSONEncoder),
-        'conversiones_asesor_data_json': json.dumps(conversiones_asesor_data, cls=DjangoJSONEncoder),
-        'ingresos_programa_data_json': json.dumps(ingresos_programa_data, cls=DjangoJSONEncoder),
     }
     return render(request, 'gestion/dashboard.html', context)
+
+@require_POST
+def actualizar_estado_lead(request, lead_id):
+    try:
+        lead = get_object_or_404(Lead, pk=lead_id)
+        data = json.loads(request.body)
+        nuevo_estado = data.get('estado')
+
+        # Obtiene los estados válidos desde el modelo
+        estados_validos = [choice[0] for choice in lead.ESTADO_LEAD_CHOICES]
+
+        if nuevo_estado in estados_validos:
+            # Prevenir cambiar a 'Convertido' desde aquí
+            if nuevo_estado == 'Convertido':
+                 return JsonResponse({'status': 'error', 'message': 'La conversión se hace desde el botón "Convertir".'}, status=400)
+            
+            lead.estado_lead = nuevo_estado
+            lead.save()
+            return JsonResponse({'status': 'ok', 'nuevo_estado': nuevo_estado})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Estado no válido.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@csrf_exempt
+@require_POST
+def api_crear_lead(request):
+    try:
+        data = json.loads(request.body)
+        
+        # Validación básica de datos
+        nombre = data.get('nombre_completo')
+        telefono = data.get('telefono')
+        
+        if not nombre or not telefono:
+            return JsonResponse({'status': 'error', 'message': 'Nombre y teléfono son requeridos.'}, status=400)
+
+        # Asignar a un asesor por defecto o de forma aleatoria (se puede mejorar)
+        asesor_default = Usuario.objects.filter(rol='Asesor').first()
+        if not asesor_default:
+             return JsonResponse({'status': 'error', 'message': 'No hay asesores disponibles.'}, status=500)
+
+        # Asignar un medio de contacto por defecto para la API
+        medio_contacto, _ = MedioContacto.objects.get_or_create(nombre_medio='Formulario Web')
+        distrito_default = Distrito.objects.first() # Simplificación, se puede mejorar
+        if not distrito_default:
+            return JsonResponse({'status': 'error', 'message': 'No hay distritos configurados.'}, status=500)
+
+        lead = Lead.objects.create(
+            nombre_completo=nombre,
+            telefono=telefono,
+            email=data.get('email', ''), # Opcional
+            genero=data.get('genero', 'Otro'),
+            estado_lead='Pendiente',
+            id_usuario_atencion=asesor_default,
+            id_medio_contacto=medio_contacto,
+            id_distrito=distrito_default
+        )
+        
+        # Manejar intereses si se envían
+        intereses_ids = data.get('intereses', [])
+        if intereses_ids:
+            programas = ProgramaAcademico.objects.filter(id_programa__in=intereses_ids)
+            lead.intereses.set(programas)
+
+        return JsonResponse({'status': 'ok', 'message': 'Lead creado con éxito.', 'lead_id': lead.id_lead})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Error en el formato de los datos (JSON inválido).'}, status=400)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': f'Error interno del servidor: {str(e)}'}, status=500)
 
 def consulta_sql(request):
     query = ""

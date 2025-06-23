@@ -3,20 +3,33 @@
 {% block title %}Editar Cliente{% endblock %}
 
 {% block content %}
-<h2>Editar Información de: {{ cliente.id_lead.nombre_completo }}</h2>
-<hr>
-
-<form method="post">
-    {% csrf_token %}
-
-    <h4>Datos Personales</h4>
-    {{ lead_form.as_p }}
-
-    <h4 class="mt-4">Datos de Contacto y Sistema</h4>
-    {{ cliente_form.as_p }}
-
+<div class="container mt-5">
+    <h2>Editando a: {{ cliente.id_lead.nombre_completo }}</h2>
     <hr>
-    <a href="{% url 'gestion:listar_matriculas' %}" class="btn btn-secondary">Cancelar</a>
-    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-</form>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="card">
+            <div class="card-header">
+                Datos del Cliente
+            </div>
+            <div class="card-body">
+                {{ cliente_form.as_p }}
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                Datos del Lead Original
+            </div>
+            <div class="card-body">
+                {{ lead_form.as_p }}
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <a href="{% url 'gestion:listar_matriculas' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
 {% endblock %} 

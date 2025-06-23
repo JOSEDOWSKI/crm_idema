@@ -11,11 +11,33 @@
                 <strong>Estudiante:</strong> {{ matricula.id_cliente.id_lead.nombre_completo }}
             </div>
             <div class="card-body">
-                <p><strong>Programa:</strong> {{ matricula.id_programa.nombre_programa }}</p>
+                <h5 class="card-title">Información del Alumno</h5>
+                <p><strong>Nombre:</strong> {{ matricula.id_cliente.id_lead.nombre_completo }}</p>
                 <p><strong>DNI:</strong> {{ matricula.id_cliente.dni }}</p>
                 <p><strong>Email:</strong> {{ matricula.id_cliente.email }}</p>
+                <p><strong>Programa:</strong> {{ matricula.id_programa.nombre_programa }}</p>
                 <p><strong>Modalidad:</strong> {{ matricula.id_modalidad.nombre_modalidad }}</p>
                 <p><strong>Estado:</strong> {{ matricula.get_estado_display }}</p>
+
+                <h6 class="mt-4">Documentos Adjuntos</h6>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Documento de Identidad (DNI):
+                        {% if matricula.id_cliente.archivo_dni %}
+                            <a href="{{ matricula.id_cliente.archivo_dni.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver Archivo</a>
+                        {% else %}
+                            <span class="badge badge-secondary">No adjuntado</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Partida de Nacimiento:
+                        {% if matricula.id_cliente.archivo_partida %}
+                            <a href="{{ matricula.id_cliente.archivo_partida.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver Archivo</a>
+                        {% else %}
+                            <span class="badge badge-secondary">No adjuntado</span>
+                        {% endif %}
+                    </li>
+                </ul>
             </div>
         </div>
 

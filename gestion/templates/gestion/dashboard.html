@@ -69,26 +69,62 @@
         <!-- Columna Izquierda -->
         <div class="col-lg-7">
             
-            <!-- Gráfico: Ingresos por Programa -->
+            <!-- Tabla: Ingresos por Programa -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">Ingresos por Programa Académico</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-bar">
-                        <canvas id="ingresosProgramaChart"></canvas>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Programa</th>
+                                    <th class="text-end">Ingresos (S/)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in ingresos_por_programa %}
+                                <tr>
+                                    <td>{{ item.nombre_programa }}</td>
+                                    <td class="text-end">{{ item.total_recaudado|default:"0.00"|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Gráfico: Conversiones por Asesor -->
+            <!-- Tabla: Rendimiento por Asesor -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Conversiones por Asesor</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Rendimiento por Asesor</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-bar">
-                        <canvas id="conversionesAsesorChart"></canvas>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Asesor</th>
+                                    <th class="text-end">Leads Atendidos</th>
+                                    <th class="text-end">Conv. Totales</th>
+                                    <th class="text-end">Conv. este Mes</th>
+                                    <th class="text-end">Tasa Conversión</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for asesor in conversiones_por_asesor %}
+                                <tr>
+                                    <td>{{ asesor.nombre_usuario }}</td>
+                                    <td class="text-end">{{ asesor.total_leads }}</td>
+                                    <td class="text-end">{{ asesor.conversiones_totales }}</td>
+                                    <td class="text-end">{{ asesor.conversiones_mes }}</td>
+                                    <td class="text-end">{{ asesor.tasa_conversion_final|floatformat:2 }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -104,9 +140,6 @@
                     <h6 class="m-0 font-weight-bold text-primary">Origen de Leads por Canal</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-pie pt-4 mb-4">
-                        <canvas id="leadsCanalChart"></canvas>
-                    </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered" width="100%" cellspacing="0">
                             <thead><tr><th>Canal</th><th class="text-end">Leads</th></tr></thead>
@@ -150,109 +183,4 @@
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // Función para generar colores aleatorios para los gráficos
-    const getRandomColor = (alpha = 1) => `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${alpha})`;
-    const getColors = (count) => Array.from({ length: count }, () => getRandomColor(0.7));
-    const getBorderColors = (count) => Array.from({ length: count }, () => getRandomColor(1));
-
-    // Gráfico 1: Leads por Canal (Doughnut)
-    const leadsCanalData = JSON.parse(document.getElementById('leads_canal_data').textContent);
-    const leadsCanalCtx = document.getElementById('leadsCanalChart').getContext('2d');
-    if (leadsCanalData.labels.length > 0) {
-        new Chart(leadsCanalCtx, {
-            type: 'doughnut',
-            data: {
-                labels: leadsCanalData.labels,
-                datasets: [{
-                    data: leadsCanalData.data,
-                    backgroundColor: getColors(leadsCanalData.labels.length),
-                    borderColor: getBorderColors(leadsCanalData.labels.length),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                }
-            }
-        });
-    }
-
-    // Gráfico 2: Conversiones por Asesor (Bar)
-    const conversionesAsesorData = JSON.parse(document.getElementById('conversiones_asesor_data').textContent);
-    const conversionesAsesorCtx = document.getElementById('conversionesAsesorChart').getContext('2d');
-    if (conversionesAsesorData.labels.length > 0) {
-        new Chart(conversionesAsesorCtx, {
-            type: 'bar',
-            data: {
-                labels: conversionesAsesorData.labels,
-                datasets: [{
-                    label: 'Conversiones',
-                    data: conversionesAsesorData.data,
-                    backgroundColor: getColors(conversionesAsesorData.labels.length),
-                    borderColor: getBorderColors(conversionesAsesorData.labels.length),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-    }
-
-    // Gráfico 3: Ingresos por Programa (Horizontal Bar)
-    const ingresosProgramaData = JSON.parse(document.getElementById('ingresos_programa_data').textContent);
-    const ingresosProgramaCtx = document.getElementById('ingresosProgramaChart').getContext('2d');
-    if (ingresosProgramaData.labels.length > 0) {
-        new Chart(ingresosProgramaCtx, {
-            type: 'bar',
-            data: {
-                labels: ingresosProgramaData.labels,
-                datasets: [{
-                    label: 'Ingresos (S/)',
-                    data: ingresosProgramaData.data,
-                    backgroundColor: getColors(ingresosProgramaData.labels.length),
-                    borderColor: getBorderColors(ingresosProgramaData.labels.length),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                indexAxis: 'y', // <-- Esto lo hace horizontal
-                responsive: true,
-                maintainAspectRatio: true,
-                 scales: {
-                    x: {
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-    }
-
-});
-</script>
 {% endblock %} 

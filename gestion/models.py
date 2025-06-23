@@ -89,11 +89,12 @@ class Lead(models.Model):
         FEMENINO = 'Femenino', 'Femenino'
         OTRO = 'Otro', 'Otro'
 
-    class EstadoLead(models.TextChoices):
-        ATENDIDO = 'Atendido', 'Atendido'
-        NO_ATENDIDO = 'No Atendido', 'No Atendido'
-        PENDIENTE = 'Pendiente', 'Pendiente'
-        CONVERTIDO = 'Convertido', 'Convertido'
+    ESTADO_LEAD_CHOICES = [
+        ('Pendiente', 'Pendiente'),
+        ('Atendido', 'Atendido'),
+        ('No Atendido', 'No Atendido'),
+        ('Convertido', 'Convertido'),
+    ]
 
     id_lead = models.AutoField(primary_key=True)
     nombre_completo = models.CharField(max_length=255)
@@ -101,7 +102,7 @@ class Lead(models.Model):
     nivel_estudios = models.CharField(max_length=100, blank=True, null=True)
     genero = models.CharField(max_length=10, choices=Genero.choices)
     fecha_ingreso = models.DateTimeField(default=timezone.now)
-    estado_lead = models.CharField(max_length=20, choices=EstadoLead.choices)
+    estado_lead = models.CharField(max_length=20, choices=ESTADO_LEAD_CHOICES)
     id_usuario_atencion = models.ForeignKey(Usuario, on_delete=models.PROTECT, related_name='leads_atendidos', db_column='id_usuario_atencion')
     id_medio_contacto = models.ForeignKey(MedioContacto, on_delete=models.PROTECT, db_column='id_medio_contacto')
     id_distrito = models.ForeignKey(Distrito, on_delete=models.PROTECT, db_column='id_distrito')
@@ -110,11 +111,16 @@ class Lead(models.Model):
     def __str__(self):
         return self.nombre_completo
 
+    def get_estado_lead_choices(self):
+        return self.ESTADO_LEAD_CHOICES
+
 class Cliente(models.Model):
     id_cliente = models.AutoField(primary_key=True)
+    id_lead = models.OneToOneField(Lead, on_delete=models.CASCADE)
     dni = models.CharField(max_length=8, unique=True)
-    email = models.EmailField(max_length=255, unique=True)
-    id_lead = models.OneToOneField(Lead, on_delete=models.CASCADE, db_column='id_lead')
+    email = models.EmailField(max_length=100, unique=True)
+    archivo_dni = models.FileField(upload_to='documentos_clientes/', blank=True, null=True, verbose_name="Archivo DNI (PDF o Imagen)")
+    archivo_partida = models.FileField(upload_to='documentos_clientes/', blank=True, null=True, verbose_name="Partida de Nacimiento (PDF o Imagen)")
 
     def __str__(self):
         return self.id_lead.nombre_completo
