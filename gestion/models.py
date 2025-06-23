@@ -1,14 +1,23 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 # ==============================================================
 # SECCIÓN 1: MODELOS DE CATÁLOGO Y SOPORTE
 # ==============================================================
 
 class Usuario(models.Model):
+    class Roles(models.TextChoices):
+        ADMIN = 'ADMIN', 'Administrador'
+        VENTAS = 'VENTAS', 'Asesor de Ventas'
+        MARKETING = 'MARKETING', 'Marketing'
+        ANALISTA = 'ANALISTA', 'Analista de Datos'
+
     id_usuario = models.AutoField(primary_key=True)
+    # Conexión al sistema de autenticación de Django
+    user_django = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
     nombre_usuario = models.CharField(max_length=255)
-    rol = models.CharField(max_length=50)
+    rol = models.CharField(max_length=20, choices=Roles.choices, default=Roles.VENTAS)
     activo = models.BooleanField(default=True)
 
     def __str__(self):
@@ -172,3 +181,4 @@ class Pago(models.Model):
 
     def __str__(self):
         return f"Pago de {self.monto} por {self.concepto} para {self.id_matricula.id_cliente}"
+

@@ -10,35 +10,51 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">CRM Educativo</a>
+            <a class="navbar-brand" href="{% url 'gestion:dashboard' %}">CRM Educativo</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'gestion:dashboard' %}">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'gestion:listar_leads' %}">Leads</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'gestion:listar_matriculas' %}">Matrículas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'gestion:poblar_bd' %}">Poblar BD</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'gestion:consulta_sql' %}">Consulta SQL</a>
-                    </li>
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'gestion:dashboard' %}">Dashboard</a>
+                        </li>
+                        {% if user.usuario.rol == 'ADMIN' or user.usuario.rol == 'VENTAS' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'gestion:listar_leads' %}">Leads</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'gestion:listar_matriculas' %}">Matrículas</a>
+                        </li>
+                        {% endif %}
+                         {% if user.usuario.rol == 'ADMIN' or user.usuario.rol == 'ANALISTA' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'gestion:consulta_sql' %}">Consulta SQL</a>
+                        </li>
+                        {% endif %}
+                        {% if user.is_superuser or user.usuario.rol == 'ADMIN' %}
+                        <li class="nav-item">
+                            <a class="nav-link text-warning" href="{% url 'gestion:poblar_bd' %}">Poblar BD</a>
+                        </li>
+                        {% endif %}
+                    {% endif %}
                 </ul>
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link text-warning" href="{% url 'gestion:poblar_bd' %}" 
-                           onclick="return confirm('¿Estás seguro de que quieres borrar TODOS los datos y reemplazarlos con los datos de ejemplo?');">
-                           Poblar BD de Ejemplo
-                        </a>
-                    </li>
+                <ul class="navbar-nav">
+                     {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Hola, {{ user.first_name }} ({{ user.usuario.get_rol_display }})
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="{% url 'logout' %}">Cerrar Sesión</a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">Iniciar Sesión</a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

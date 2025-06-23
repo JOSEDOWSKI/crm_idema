@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
 from .models import (
     Usuario,
     MedioContacto,
@@ -14,6 +16,29 @@ from .models import (
     Matricula,
     Pago,
 )
+
+# Define un 'inline' para el modelo Usuario (nuestro perfil)
+class UsuarioInline(admin.StackedInline):
+    model = Usuario
+    can_delete = False
+    verbose_name_plural = 'Perfil de Usuario (Rol)'
+    fk_name = 'user_django'
+
+# Define un nuevo UserAdmin
+class UserAdmin(BaseUserAdmin):
+    inlines = (UsuarioInline,)
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'get_rol')
+
+    def get_rol(self, instance):
+        try:
+            return instance.usuario.get_rol_display()
+        except Usuario.DoesNotExist:
+            return 'Sin Rol Asignado'
+    get_rol.short_description = 'Rol'
+
+# Vuelve a registrar UserAdmin
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
 
 # Para mejorar la visualización en el admin
 class LeadAdmin(admin.ModelAdmin):

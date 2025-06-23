@@ -7,6 +7,11 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.forms import AuthenticationForm
+from .decorators import rol_requerido
 import json
 import random
 from datetime import timedelta
@@ -19,6 +24,8 @@ from .models import (
 
 # Create your views here.
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def listar_leads(request):
     sort_by = request.GET.get('sort', 'fecha_ingreso')
     direction = request.GET.get('direction', 'desc')
@@ -46,6 +53,8 @@ def listar_leads(request):
     }
     return render(request, 'gestion/listar_leads.html', context)
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def listar_matriculas(request):
     matriculas = Matricula.objects.select_related(
         'id_cliente__id_lead', 
@@ -54,6 +63,8 @@ def listar_matriculas(request):
     ).all().order_by('-fecha_inscripcion')
     return render(request, 'gestion/listar_matriculas.html', {'matriculas': matriculas})
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def detalle_matricula(request, matricula_id):
     matricula = get_object_or_404(
         Matricula.objects.select_related('id_cliente__id_lead', 'id_programa'),
@@ -78,6 +89,8 @@ def detalle_matricula(request, matricula_id):
     }
     return render(request, 'gestion/detalle_matricula.html', context)
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 @transaction.atomic
 def editar_cliente(request, cliente_id):
     cliente = get_object_or_404(Cliente, id_cliente=cliente_id)
@@ -102,6 +115,8 @@ def editar_cliente(request, cliente_id):
     }
     return render(request, 'gestion/editar_cliente.html', context)
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN])
 @transaction.atomic
 def poblar_bd_ejemplo(request):
     # BORRADO
@@ -111,6 +126,7 @@ def poblar_bd_ejemplo(request):
     Cliente.objects.all().delete()
     Lead.objects.all().delete()
     Usuario.objects.all().delete()
+    User.objects.filter(is_superuser=False).delete() # Borra usuarios de Django que no son admins
     MedioContacto.objects.all().delete()
     ProgramaAcademico.objects.all().delete()
     Modalidad.objects.all().delete()
@@ -120,7 +136,32 @@ def poblar_bd_ejemplo(request):
     Departamento.objects.all().delete()
 
     # --- CREACIÓN DE DATOS DE CATÁLOGO ---
-    asesores = [Usuario.objects.create(nombre_usuario=name, rol='Asesor') for name in ['Ana García', 'Luis Torres', 'Dayana', 'Malu', 'Jorge Paz']]
+    # Crear usuarios de Django y perfiles de Usuario
+    usuarios_data = [
+        {'nombre': 'Ana García', 'rol': Usuario.Roles.ADMIN, 'user': 'admin_ana'},
+        {'nombre': 'Luis Torres', 'rol': Usuario.Roles.VENTAS, 'user': 'ventas_luis'},
+        {'nombre': 'Dayana Solis', 'rol': Usuario.Roles.VENTAS, 'user': 'ventas_dayana'},
+        {'nombre': 'Marco Polo', 'rol': Usuario.Roles.MARKETING, 'user': 'mkt_marco'},
+        {'nombre': 'Jorge Paz', 'rol': Usuario.Roles.ANALISTA, 'user': 'data_jorge'},
+    ]
+    asesores = []
+    for data in usuarios_data:
+        user, created = User.objects.get_or_create(username=data['user'])
+        if created:
+            user.set_password('123') # Contraseña simple para desarrollo
+            user.first_name = data['nombre'].split()[0]
+            user.last_name = ' '.join(data['nombre'].split()[1:])
+            user.save()
+        
+        usuario_perfil = Usuario.objects.create(
+            user_django=user,
+            nombre_usuario=data['nombre'],
+            rol=data['rol']
+        )
+        # Solo los de ventas pueden ser 'asesores' de un lead
+        if usuario_perfil.rol == Usuario.Roles.VENTAS or usuario_perfil.rol == Usuario.Roles.ADMIN:
+            asesores.append(usuario_perfil)
+    
     medios_contacto = [MedioContacto.objects.create(nombre_medio=name) for name in ['Facebook', 'TikTok', 'Página Web', 'Familiar', 'Instagram', 'Contacto Directo']]
     modalidades = [Modalidad.objects.create(nombre_modalidad=name) for name in ['Presencial', 'Virtual', 'Semi-presencial']]
     medios_pago = [MedioPago.objects.create(nombre_medio=name) for name in ['Yape', 'Tarjeta de Crédito', 'Transferencia BCP', 'Efectivo']]
@@ -205,9 +246,11 @@ def poblar_bd_ejemplo(request):
             lead.estado_lead = random.choice(['Atendido', 'No Atendido', 'Pendiente'])
             lead.save()
             
-    messages.success(request, 'La base de datos ha sido reiniciada con un set de datos de ejemplo ampliado.')
+    messages.success(request, 'La base de datos ha sido reiniciada con usuarios, roles y datos de ejemplo.')
     return redirect('gestion:dashboard')
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 @transaction.atomic
 def convertir_lead_a_cliente(request, lead_id):
     lead = get_object_or_404(Lead, id_lead=lead_id)
@@ -249,6 +292,8 @@ def convertir_lead_a_cliente(request, lead_id):
 
     return render(request, 'gestion/convertir_lead.html', {'form': form, 'lead': lead})
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def crear_lead(request):
     if request.method == 'POST':
         form = LeadForm(request.POST)
@@ -269,6 +314,7 @@ def crear_lead(request):
 
     return render(request, 'gestion/crear_lead.html', {'form': form})
 
+@login_required
 def dashboard(request):
     total_alumnos = Cliente.objects.count()
     total_leads = Lead.objects.count()
@@ -413,6 +459,8 @@ def api_crear_lead(request):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': f'Error interno del servidor: {str(e)}'}, status=500)
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.ANALISTA])
 def consulta_sql(request):
     query = ""
     results = None
@@ -440,3 +488,23 @@ def consulta_sql(request):
         'error': error,
     }
     return render(request, 'gestion/consulta_sql.html', context)
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('gestion:dashboard')
+
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect('gestion:dashboard')
+            else:
+                messages.error(request,"Usuario o contraseña inválidos.")
+        else:
+            messages.error(request,"Usuario o contraseña inválidos.")
+    form = AuthenticationForm()
+    return render(request, 'gestion/login.html', {'form': form})
