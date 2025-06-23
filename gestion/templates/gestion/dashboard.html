@@ -9,178 +9,164 @@
 {{ ingresos_programa_data_json|json_script:"ingresos_programa_data" }}
 
 <div class="container-fluid mt-4">
-    <h2 class="mb-4">Dashboard de Gestión</h2>
+    <h2 class="mb-4">Dashboard</h2>
 
-    <!-- KPIs Principales -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+    <!-- Fila de KPIs principales -->
+    <div class="row">
+        {% if rol_usuario == Roles.ADMIN or rol_usuario == Roles.ANALISTA %}
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-primary">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Alumnos (Clientes)</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_alumnos }}</div>
-                        </div>
-                    </div>
+                    <h5 class="card-title">Total Leads</h5>
+                    <p class="card-text fs-4">{{ total_leads }}</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-success">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monto Total Recaudado</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">S/ {{ monto_recaudado|floatformat:2 }}</div>
-                        </div>
-                    </div>
+                    <h5 class="card-title">Total Alumnos (Clientes)</h5>
+                    <p class="card-text fs-4">{{ total_alumnos }}</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
+         <div class="col-md-3 mb-4">
+            <div class="card text-white bg-info">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Tasa de Conversión</div>
-                            <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ tasa_conversion|floatformat:2 }}%</div>
-                        </div>
-                    </div>
+                    <h5 class="card-title">Leads de este Mes</h5>
+                    <p class="card-text fs-4">{{ leads_este_mes }}</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-secondary">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Tasa de Retención (Matrículas Activas)</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ tasa_retencion|floatformat:2 }}%</div>
-                        </div>
-                    </div>
+                    <h5 class="card-title">Clientes Nuevos del Mes</h5>
+                    <p class="card-text fs-4">{{ clientes_este_mes }}</p>
                 </div>
             </div>
         </div>
+        {% endif %}
+
+        {% if rol_usuario == Roles.ADMIN %}
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h5 class="card-title">Monto Recaudado Total</h5>
+                    <p class="card-text fs-4">S/ {{ monto_recaudado|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">Tasa de Conversión</h5>
+                    <p class="card-text fs-4">{{ tasa_conversion|floatformat:2 }}%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-dark">
+                <div class="card-body">
+                    <h5 class="card-title">Tasa de Retención</h5>
+                    <p class="card-text fs-4">{{ tasa_retencion|floatformat:2 }}%</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
-    <!-- Gráficos y Tablas -->
+    <!-- Fila de Tablas y Gráficos -->
     <div class="row">
-
-        <!-- Columna Izquierda -->
-        <div class="col-lg-7">
-            
-            <!-- Tabla: Ingresos por Programa -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Ingresos por Programa Académico</h6>
-                </div>
+        {% if rol_usuario == Roles.ADMIN or rol_usuario == Roles.MARKETING %}
+        <!-- Leads por Canal de Contacto -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Leads por Canal de Contacto</div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Programa</th>
-                                    <th class="text-end">Ingresos (S/)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in ingresos_por_programa %}
-                                <tr>
-                                    <td>{{ item.nombre_programa }}</td>
-                                    <td class="text-end">{{ item.total_recaudado|default:"0.00"|floatformat:2 }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr><th>Canal</th><th>Nº Leads</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for canal in leads_por_canal %}
+                            <tr><td>{{ canal.nombre_medio }}</td><td>{{ canal.num_leads }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-
-            <!-- Tabla: Rendimiento por Asesor -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Rendimiento por Asesor</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Asesor</th>
-                                    <th class="text-end">Leads Atendidos</th>
-                                    <th class="text-end">Conv. Totales</th>
-                                    <th class="text-end">Conv. este Mes</th>
-                                    <th class="text-end">Tasa Conversión</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for asesor in conversiones_por_asesor %}
-                                <tr>
-                                    <td>{{ asesor.nombre_usuario }}</td>
-                                    <td class="text-end">{{ asesor.total_leads }}</td>
-                                    <td class="text-end">{{ asesor.conversiones_totales }}</td>
-                                    <td class="text-end">{{ asesor.conversiones_mes }}</td>
-                                    <td class="text-end">{{ asesor.tasa_conversion_final|floatformat:2 }}%</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
         </div>
 
-        <!-- Columna Derecha -->
-        <div class="col-lg-5">
-
-            <!-- Gráfico: Leads por Canal -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Origen de Leads por Canal</h6>
-                </div>
+        <!-- Programas más Populares por Interés -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Programas con Mayor Interés</div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered" width="100%" cellspacing="0">
-                            <thead><tr><th>Canal</th><th class="text-end">Leads</th></tr></thead>
-                            <tbody>
-                                {% for item in leads_por_canal %}
-                                <tr><td>{{ item.nombre_medio }}</td><td class="text-end">{{ item.num_leads }}</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr><th>Programa</th><th>Nº Interesados</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for programa in programas_populares %}
+                            <tr><td>{{ programa.nombre_programa }}</td><td>{{ programa.num_interesados }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
+        </div>
+        {% endif %}
 
-            <!-- Tabla: Programas más Populares -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Programas más Populares</h6>
-                </div>
+        {% if rol_usuario == Roles.ADMIN %}
+        <!-- Rendimiento de Asesores -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Rendimiento de Asesores (Ventas)</div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered" width="100%" cellspacing="0">
-                           <thead>
-                                <tr>
-                                    <th>Programa</th>
-                                    <th class="text-end">Inscritos</th>
-                                </tr>
-                           </thead>
-                           <tbody>
-                                {% for programa in programas_populares %}
+                    <table class="table">
+                        <thead>
+                            <tr><th>Asesor</th><th>Leads Totales</th><th>Conversiones</th><th>Tasa de Conversión</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for asesor in conversiones_por_asesor %}
+                            <tr>
+                                <td>{{ asesor.nombre_usuario }}</td>
+                                <td>{{ asesor.total_leads }}</td>
+                                <td>{{ asesor.conversiones_totales }}</td>
+                                <td>{{ asesor.tasa_conversion_final|floatformat:2 }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ingresos por Programa -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Ingresos Totales por Programa</div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Programa</th><th>Monto Total Recaudado</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for programa in ingresos_por_programa %}
+                                {% if programa.total_recaudado > 0 %}
                                 <tr>
                                     <td>{{ programa.nombre_programa }}</td>
-                                    <td class="text-end">{{ programa.num_inscritos }}</td>
+                                    <td>S/ {{ programa.total_recaudado|floatformat:2 }}</td>
                                 </tr>
-                                {% endfor %}
-                           </tbody>
-                        </table>
-                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %} 

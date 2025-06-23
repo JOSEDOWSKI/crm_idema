@@ -15,6 +15,7 @@ urlpatterns = [
     # Rutas de Leads
     path('leads/', views.listar_leads, name='listar_leads'),
     path('leads/crear/', views.crear_lead, name='crear_lead'),
+    path('leads/exportar/', views.exportar_leads_csv, name='exportar_leads_csv'),
     path('leads/<int:lead_id>/', views.detalle_lead, name='detalle_lead'),
     path('leads/convertir/<int:lead_id>/', views.convertir_lead_a_cliente, name='convertir_lead'),
     path('leads/actualizar_estado/<int:lead_id>/', views.actualizar_estado_lead, name='actualizar_estado_lead'),
@@ -28,4 +29,7 @@ urlpatterns = [
     path('sql/', views.consulta_sql, name='consulta_sql'),
     path('poblar-bd/', views.poblar_bd_ejemplo, name='poblar_bd'),
     path('api/leads/crear/', views.api_crear_lead, name='api_crear_lead'),
+
+    # Página de acceso denegado
+    path('no-access/', views.no_access_view, name='no_access'),
 ] 

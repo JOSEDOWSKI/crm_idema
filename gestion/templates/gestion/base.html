@@ -10,17 +10,23 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'gestion:dashboard' %}">CRM Educativo</a>
+            <a class="navbar-brand" href="{% if request.user.is_authenticated %}{% url 'gestion:dashboard' %}{% else %}{% url 'gestion:login' %}{% endif %}">CRM Académico</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    {% if user.is_authenticated %}
+                    {% if request.user.is_authenticated %}
+                    
+                        {# Dashboard: Visible para Admin, Marketing, Analista #}
+                        {% if request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Marketing' or request.user.usuario.rol == 'Analista' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'gestion:dashboard' %}">Dashboard</a>
                         </li>
-                        {% if user.usuario.rol == 'ADMIN' or user.usuario.rol == 'VENTAS' %}
+                        {% endif %}
+
+                        {# Leads & Matrículas: Visible para Admin y Ventas #}
+                        {% if request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Ventas' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'gestion:listar_leads' %}">Leads</a>
                         </li>
@@ -28,20 +34,18 @@
                             <a class="nav-link" href="{% url 'gestion:listar_matriculas' %}">Matrículas</a>
                         </li>
                         {% endif %}
-                         {% if user.usuario.rol == 'ADMIN' or user.usuario.rol == 'ANALISTA' %}
+
+                        {# SQL: Visible para Superuser, Admin y Analista #}
+                        {% if request.user.is_superuser or request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Analista' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'gestion:consulta_sql' %}">Consulta SQL</a>
+                            <a class="nav-link" href="{% url 'gestion:consulta_sql' %}">SQL</a>
                         </li>
                         {% endif %}
-                        {% if user.is_superuser or user.usuario.rol == 'ADMIN' %}
-                        <li class="nav-item">
-                            <a class="nav-link text-warning" href="{% url 'gestion:poblar_bd' %}">Poblar BD</a>
-                        </li>
-                        {% endif %}
+
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
-                     {% if user.is_authenticated %}
+                    {% if request.user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Bienvenido, {{ request.user.first_name }} ({{ request.user.usuario.get_rol_display }})
@@ -63,12 +67,15 @@
     <main class="container mt-4">
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             {% endfor %}
         {% endif %}
         {% block content %}{% endblock %}
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

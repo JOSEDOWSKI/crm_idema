@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.db.models import Count, Sum, Q, F, FloatField, Case, When, Value
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
@@ -14,6 +14,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from .decorators import rol_requerido
 import json
 import random
+import csv
 from datetime import timedelta
 from .forms import LeadForm, ConvertirLeadForm, PagoForm, ClienteEditForm, LeadEditForm, InteraccionForm
 from .models import (
@@ -344,79 +345,96 @@ def crear_lead(request):
 
 @login_required
 def dashboard(request):
-    total_alumnos = Cliente.objects.count()
-    total_leads = Lead.objects.count()
-    total_matriculas = Matricula.objects.count()
+    # Redirección para el rol de Ventas
+    if request.user.usuario.rol == Usuario.Roles.VENTAS:
+        return redirect('gestion:listar_leads')
 
-    monto_recaudado = Pago.objects.aggregate(total=Sum('monto'))['total'] or 0
+    context = {}
+    rol_usuario = request.user.usuario.rol
+    context['rol_usuario'] = rol_usuario
+    context['Roles'] = Usuario.Roles
 
-    if total_leads > 0:
-        tasa_conversion = (total_alumnos / total_leads) * 100
-    else:
-        tasa_conversion = 0
+    # --- KPIs para ADMIN y ANALISTA ---
+    if rol_usuario in [Usuario.Roles.ADMIN, Usuario.Roles.ANALISTA]:
+        total_alumnos = Cliente.objects.count()
+        total_leads = Lead.objects.count()
+        
+        now = timezone.now()
+        leads_este_mes = Lead.objects.filter(
+            fecha_ingreso__year=now.year,
+            fecha_ingreso__month=now.month
+        ).count()
+        
+        clientes_este_mes = Cliente.objects.filter(
+            matricula__fecha_inscripcion__year=now.year,
+            matricula__fecha_inscripcion__month=now.month
+        ).count()
+        
+        context.update({
+            'total_alumnos': total_alumnos,
+            'total_leads': total_leads,
+            'leads_este_mes': leads_este_mes,
+            'clientes_este_mes': clientes_este_mes,
+        })
 
-    if total_matriculas > 0:
-        activos = Matricula.objects.filter(estado='Activo').count()
-        tasa_retencion = (activos / total_matriculas) * 100
-    else:
-        tasa_retencion = 0
-    
-    # NUEVOS KPIs
-    leads_por_canal = MedioContacto.objects.annotate(
-        num_leads=Count('lead')
-    ).order_by('-num_leads')
+    # --- KPIs para ADMIN ---
+    if rol_usuario == Usuario.Roles.ADMIN:
+        total_matriculas = Matricula.objects.count()
+        monto_recaudado = Pago.objects.aggregate(total=Sum('monto'))['total'] or 0
+        
+        if total_leads > 0:
+            tasa_conversion = (context.get('total_alumnos', 0) / total_leads) * 100
+        else:
+            tasa_conversion = 0
 
-    now = timezone.now()
-    conversiones_por_asesor = Usuario.objects.filter(rol='Asesor').annotate(
-        total_leads=Count('leads_atendidos', distinct=True),
-        conversiones_totales=Count(
-            'leads_atendidos',
-            filter=Q(leads_atendidos__estado_lead='Convertido'),
-            distinct=True
-        ),
-        conversiones_mes=Count(
-            'leads_atendidos',
-            filter=Q(
-                leads_atendidos__estado_lead='Convertido',
-                leads_atendidos__cliente__matricula__fecha_inscripcion__year=now.year,
-                leads_atendidos__cliente__matricula__fecha_inscripcion__month=now.month
-            ),
-            distinct=True
-        )
-    ).annotate(
-        tasa_conversion_final=Case(
-            When(total_leads=0, then=Value(0.0)),
-            default=(F('conversiones_totales') * 100.0 / F('total_leads')),
-            output_field=FloatField()
-        )
-    ).order_by('-conversiones_totales')
+        if total_matriculas > 0:
+            activos = Matricula.objects.filter(estado='Activo').count()
+            tasa_retencion = (activos / total_matriculas) * 100
+        else:
+            tasa_retencion = 0
 
-    ingresos_por_programa = ProgramaAcademico.objects.annotate(
-        total_recaudado=Sum('matricula__pago__monto')
-    ).order_by('-total_recaudado')
+        context.update({
+            'monto_recaudado': monto_recaudado,
+            'tasa_conversion': tasa_conversion,
+            'tasa_retencion': tasa_retencion,
+            'conversiones_por_asesor': Usuario.objects.filter(rol=Usuario.Roles.VENTAS).annotate(
+                total_leads=Count('leads_atendidos', distinct=True),
+                conversiones_totales=Count(
+                    'leads_atendidos',
+                    filter=Q(leads_atendidos__estado_lead='Convertido'),
+                    distinct=True
+                )
+            ).annotate(
+                tasa_conversion_final=Case(
+                    When(total_leads=0, then=Value(0.0)),
+                    default=(F('conversiones_totales') * 100.0 / F('total_leads')),
+                    output_field=FloatField()
+                )
+            ).order_by('-conversiones_totales'),
+            'ingresos_por_programa': ProgramaAcademico.objects.annotate(
+                total_recaudado=Sum('matricula__pago__monto')
+            ).order_by('-total_recaudado'),
+        })
 
-    programas_populares = ProgramaAcademico.objects.annotate(
-        num_inscritos=Count('matricula')
-    ).order_by('-num_inscritos').filter(num_inscritos__gt=0)
+    # --- KPIs para MARKETING y ADMIN ---
+    if rol_usuario in [Usuario.Roles.MARKETING, Usuario.Roles.ADMIN]:
+        context.update({
+            'leads_por_canal': MedioContacto.objects.annotate(
+                num_leads=Count('lead')
+            ).order_by('-num_leads'),
+            'programas_populares': ProgramaAcademico.objects.annotate(
+                num_interesados=Count('leadinteresprograma')
+            ).order_by('-num_interesados').filter(num_interesados__gt=0),
+            'alumnos_por_depto': Departamento.objects.annotate(
+                num_alumnos=Count('provincia__distrito__lead__cliente')
+            ).order_by('-num_alumnos').filter(num_alumnos__gt=0),
+        })
 
-    alumnos_por_depto = Departamento.objects.annotate(
-        num_alumnos=Count('provincia__distrito__lead__cliente')
-    ).order_by('-num_alumnos').filter(num_alumnos__gt=0)
-
-    context = {
-        'total_alumnos': total_alumnos,
-        'monto_recaudado': monto_recaudado,
-        'tasa_conversion': tasa_conversion,
-        'tasa_retencion': tasa_retencion,
-        'programas_populares': programas_populares,
-        'alumnos_por_depto': alumnos_por_depto,
-        'leads_por_canal': leads_por_canal,
-        'conversiones_por_asesor': conversiones_por_asesor,
-        'ingresos_por_programa': ingresos_por_programa,
-    }
     return render(request, 'gestion/dashboard.html', context)
 
 @require_POST
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def actualizar_estado_lead(request, lead_id):
     try:
         lead = get_object_or_404(Lead, pk=lead_id)
@@ -490,13 +508,12 @@ def api_crear_lead(request):
 @login_required
 @rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.ANALISTA])
 def consulta_sql(request):
-    query = ""
+    query = request.POST.get('query', '')
     results = None
     columns = None
     error = None
 
     if request.method == 'POST':
-        query = request.POST.get('query', '')
         # Medida de seguridad básica: solo permitir consultas SELECT.
         if query.strip().upper().startswith('SELECT'):
             try:
@@ -504,6 +521,18 @@ def consulta_sql(request):
                     cursor.execute(query)
                     columns = [col[0] for col in cursor.description]
                     results = cursor.fetchall()
+                
+                # --- Lógica de descarga ---
+                if 'download' in request.POST:
+                    response = HttpResponse(content_type='text/csv')
+                    response['Content-Disposition'] = 'attachment; filename="query_results.csv"'
+                    
+                    writer = csv.writer(response)
+                    writer.writerow(columns) # Escribir cabeceras
+                    writer.writerows(results) # Escribir datos
+                    
+                    return response
+
             except Exception as e:
                 error = f"Error al ejecutar la consulta: {e}"
         else:
@@ -516,6 +545,41 @@ def consulta_sql(request):
         'error': error,
     }
     return render(request, 'gestion/consulta_sql.html', context)
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+def exportar_leads_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="listado_leads.csv"'
+    response.write(u'\ufeff'.encode('utf8')) # BOM para manejar carácteres especiales
+
+    writer = csv.writer(response)
+    
+    # Escribir la fila de la cabecera
+    writer.writerow([
+        'Nombre Completo', 'Telefono', 'Email', 'Genero', 'Estado', 
+        'Asesor Asignado', 'Medio de Contacto', 'Distrito', 'Fecha de Ingreso'
+    ])
+
+    # Escribir las filas de datos
+    leads = Lead.objects.select_related(
+        'id_usuario_atencion', 'id_medio_contacto', 'id_distrito__id_provincia__id_departamento'
+    ).all()
+    
+    for lead in leads:
+        writer.writerow([
+            lead.nombre_completo,
+            lead.telefono,
+            lead.email,
+            lead.get_genero_display(),
+            lead.get_estado_lead_display(),
+            lead.id_usuario_atencion.nombre_usuario if lead.id_usuario_atencion else 'N/A',
+            lead.id_medio_contacto.nombre_medio if lead.id_medio_contacto else 'N/A',
+            lead.id_distrito.nombre if lead.id_distrito else 'N/A',
+            lead.fecha_ingreso.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    return response
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -541,3 +605,7 @@ def logout_view(request):
     logout(request)
     messages.info(request, "Has cerrado sesión exitosamente.")
     return redirect('gestion:login')
+
+@login_required
+def no_access_view(request):
+    return render(request, 'gestion/no_access.html')

@@ -16,14 +16,17 @@
     </div>
 
     <div class="card">
+        <div class="card-header">
+            <h4>Ejecutar Consulta SQL (Solo SELECT)</h4>
+        </div>
         <div class="card-body">
             <form method="post">
                 {% csrf_token %}
-                <div class="form-group">
-                    <label for="query">Escriba su consulta SELECT aquí:</label>
-                    <textarea class="form-control" id="query" name="query" rows="8" placeholder="Ej: SELECT * FROM gestion_lead WHERE estado_lead = 'Convertido';">{{ query }}</textarea>
+                <div class="mb-3">
+                    <textarea class="form-control" id="query" name="query" rows="5" placeholder="Ej: SELECT * FROM gestion_lead LIMIT 10;">{{ query }}</textarea>
                 </div>
-                <button type="submit" class="btn btn-primary mt-3">Ejecutar Consulta</button>
+                <button type="submit" name="execute" class="btn btn-primary">Ejecutar</button>
+                <button type="submit" name="download" class="btn btn-success">Descargar CSV</button>
             </form>
         </div>
     </div>
