@@ -1,0 +1,22 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Editar Cliente{% endblock %}
+
+{% block content %}
+<h2>Editar Información de: {{ cliente.id_lead.nombre_completo }}</h2>
+<hr>
+
+<form method="post">
+    {% csrf_token %}
+
+    <h4>Datos Personales</h4>
+    {{ lead_form.as_p }}
+
+    <h4 class="mt-4">Datos de Contacto y Sistema</h4>
+    {{ cliente_form.as_p }}
+
+    <hr>
+    <a href="{% url 'gestion:listar_matriculas' %}" class="btn btn-secondary">Cancelar</a>
+    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+</form>
+{% endblock %} 

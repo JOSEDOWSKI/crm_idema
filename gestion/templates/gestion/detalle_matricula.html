@@ -1,0 +1,58 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Detalle de Matrícula{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-7">
+        <h2>Detalle de Matrícula</h2>
+        <div class="card">
+            <div class="card-header">
+                <strong>Estudiante:</strong> {{ matricula.id_cliente.id_lead.nombre_completo }}
+            </div>
+            <div class="card-body">
+                <p><strong>Programa:</strong> {{ matricula.id_programa.nombre_programa }}</p>
+                <p><strong>DNI:</strong> {{ matricula.id_cliente.dni }}</p>
+                <p><strong>Email:</strong> {{ matricula.id_cliente.email }}</p>
+                <p><strong>Modalidad:</strong> {{ matricula.id_modalidad.nombre_modalidad }}</p>
+                <p><strong>Estado:</strong> {{ matricula.get_estado_display }}</p>
+            </div>
+        </div>
+
+        <h3 class="mt-4">Historial de Pagos</h3>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Concepto</th>
+                    <th>Monto</th>
+                    <th>Medio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pago in pagos %}
+                <tr>
+                    <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+                    <td>{{ pago.get_concepto_display }}</td>
+                    <td>S/ {{ pago.monto }}</td>
+                    <td>{{ pago.id_medio_pago.nombre_medio }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center">No se han registrado pagos.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-md-5">
+        <h2>Registrar Nuevo Pago</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Guardar Pago</button>
+        </form>
+    </div>
+</div>
+{% endblock %} 

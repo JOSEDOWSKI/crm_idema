@@ -1,0 +1,43 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Listado de Matrículas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Listado de Matrículas</h1>
+</div>
+
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Estudiante</th>
+            <th>DNI</th>
+            <th>Programa</th>
+            <th>Modalidad</th>
+            <th>Fecha de Inscripción</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for matricula in matriculas %}
+        <tr>
+            <td>{{ matricula.id_cliente.id_lead.nombre_completo }}</td>
+            <td>{{ matricula.id_cliente.dni }}</td>
+            <td>{{ matricula.id_programa.nombre_programa }}</td>
+            <td>{{ matricula.id_modalidad.nombre_modalidad }}</td>
+            <td>{{ matricula.fecha_inscripcion|date:"d/m/Y" }}</td>
+            <td><span class="badge bg-primary">{{ matricula.get_estado_display }}</span></td>
+            <td>
+                <a href="{% url 'gestion:editar_cliente' matricula.id_cliente.id_cliente %}" class="btn btn-warning btn-sm">Editar</a>
+                <a href="{% url 'gestion:detalle_matricula' matricula.id_matricula %}" class="btn btn-info btn-sm">Gestionar Pagos</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7" class="text-center">No hay matrículas registradas.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 
