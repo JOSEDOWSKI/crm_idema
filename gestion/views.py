@@ -30,7 +30,6 @@ from .models import (
 def listar_leads(request):
     sort_by = request.GET.get('sort', 'fecha_ingreso')
     direction = request.GET.get('direction', 'desc')
-
     valid_sort_fields = [
         'nombre_completo', 'fecha_ingreso', 'estado_lead', 
         'id_usuario_atencion__nombre_usuario', 'id_medio_contacto__nombre_medio'
@@ -39,7 +38,6 @@ def listar_leads(request):
         sort_by = 'fecha_ingreso'
     if direction not in ['asc', 'desc']:
         direction = 'desc'
-    # Map sort fields to SQL columns
     sort_map = {
         'nombre_completo': 'l.nombre_completo',
         'fecha_ingreso': 'l.fecha_ingreso',
@@ -58,7 +56,20 @@ def listar_leads(request):
             LEFT JOIN gestion_mediocontacto m ON l.id_medio_contacto = m.id_medio_contacto
             ORDER BY {order_by}
         ''')
-        leads = cursor.fetchall()
+        rows = cursor.fetchall()
+        leads = [
+            {
+                'id_lead': row[0],
+                'nombre_completo': row[1],
+                'telefono': row[2],
+                'genero': row[3],
+                'fecha_ingreso': row[4],
+                'estado_lead': row[5],
+                'nombre_usuario': row[6],
+                'nombre_medio': row[7],
+            }
+            for row in rows
+        ]
     context = {
         'leads': leads,
         'current_sort': sort_by,

@@ -77,16 +77,14 @@
                             <span class="badge text-bg-success">{{ lead.estado_lead }}</span>
                         {% else %}
                             <select class="form-select form-select-sm status-select" data-lead-id="{{ lead.id_lead }}" data-original-state="{{ lead.estado_lead }}">
-                                {% for value, name in lead.get_estado_lead_choices %}
-                                    {% if value != 'Convertido' %}
-                                        <option value="{{ value }}" {% if lead.estado_lead == value %}selected{% endif %}>{{ name }}</option>
-                                    {% endif %}
-                                {% endfor %}
+                                <option value="Pendiente" {% if lead.estado_lead == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                                <option value="Atendido" {% if lead.estado_lead == 'Atendido' %}selected{% endif %}>Atendido</option>
+                                <option value="No Atendido" {% if lead.estado_lead == 'No Atendido' %}selected{% endif %}>No Atendido</option>
                             </select>
                         {% endif %}
                     </td>
-                    <td>{{ lead.id_usuario_atencion.nombre_usuario }}</td>
-                    <td>{{ lead.id_medio_contacto.nombre_medio }}</td>
+                    <td>{{ lead.nombre_usuario }}</td>
+                    <td>{{ lead.nombre_medio }}</td>
                     <td>
                         {% if lead.estado_lead != 'Convertido' %}
                         <a href="{% url 'gestion:convertir_lead' lead.id_lead %}" class="btn btn-sm btn-info">Convertir a Cliente</a>
