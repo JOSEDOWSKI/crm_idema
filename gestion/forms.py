@@ -1,5 +1,5 @@
 from django import forms
-from .models import Lead, ProgramaAcademico, Cliente, Matricula, Modalidad, Pago
+from .models import Lead, ProgramaAcademico, Cliente, Matricula, Modalidad, Pago, Interaccion
 
 class LeadForm(forms.ModelForm):
     intereses = forms.ModelMultipleChoiceField(
@@ -83,6 +83,15 @@ class ClienteEditForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'archivo_dni': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'archivo_partida': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
+
+class InteraccionForm(forms.ModelForm):
+    class Meta:
+        model = Interaccion
+        fields = ['tipo_interaccion', 'resultado']
+        widgets = {
+            'tipo_interaccion': forms.Select(attrs={'class': 'form-control'}),
+            'resultado': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
 class LeadEditForm(forms.ModelForm):

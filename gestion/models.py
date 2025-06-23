@@ -134,6 +134,26 @@ class Cliente(models.Model):
     def __str__(self):
         return self.id_lead.nombre_completo
 
+class Interaccion(models.Model):
+    id_interaccion = models.AutoField(primary_key=True)
+    id_lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name='interacciones')
+    id_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    fecha_interaccion = models.DateTimeField(default=timezone.now)
+    tipo_interaccion = models.CharField(max_length=50, choices=[
+        ('Llamada', 'Llamada'),
+        ('Email', 'Email'),
+        ('Reunión', 'Reunión'),
+        ('WhatsApp', 'WhatsApp'),
+        ('Otro', 'Otro'),
+    ])
+    resultado = models.TextField()
+
+    class Meta:
+        ordering = ['-fecha_interaccion']
+
+    def __str__(self):
+        return f"Interacción de {self.id_usuario.nombre_usuario} con {self.id_lead.nombre_completo} el {self.fecha_interaccion.strftime('%d/%m/%Y')}"
+
 class LeadInteresPrograma(models.Model):
     id_lead = models.ForeignKey(Lead, on_delete=models.CASCADE, db_column='id_lead')
     id_programa = models.ForeignKey(ProgramaAcademico, on_delete=models.CASCADE, db_column='id_programa')

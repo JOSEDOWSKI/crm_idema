@@ -19,16 +19,10 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
-from gestion import views as gestion_views
-from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
-    path("", RedirectView.as_view(url="/gestion/", permanent=True)),
     path("admin/", admin.site.urls),
     path("gestion/", include("gestion.urls", namespace="gestion")),
-    path('login/', gestion_views.login_view, name='login'),
-    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
-    path('', gestion_views.login_view), # Raíz del sitio
 ]
 
 if settings.DEBUG:

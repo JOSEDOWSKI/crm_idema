@@ -9,13 +9,13 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from .decorators import rol_requerido
 import json
 import random
 from datetime import timedelta
-from .forms import LeadForm, ConvertirLeadForm, PagoForm, ClienteEditForm, LeadEditForm
+from .forms import LeadForm, ConvertirLeadForm, PagoForm, ClienteEditForm, LeadEditForm, InteraccionForm
 from .models import (
     Lead, LeadInteresPrograma, Cliente, Matricula, Pago, Usuario,
     MedioContacto, Modalidad, MedioPago, ProgramaAcademico,
@@ -52,6 +52,34 @@ def listar_leads(request):
         'current_direction': direction,
     }
     return render(request, 'gestion/listar_leads.html', context)
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+def detalle_lead(request, lead_id):
+    lead = get_object_or_404(Lead, pk=lead_id)
+    interacciones = lead.interacciones.all()
+    form = InteraccionForm()
+
+    if request.method == 'POST':
+        form = InteraccionForm(request.POST)
+        if form.is_valid():
+            interaccion = form.save(commit=False)
+            interaccion.id_lead = lead
+            interaccion.id_usuario = request.user.usuario # Asigna el usuario logueado
+            interaccion.save()
+            # Cambia el estado del lead a 'Atendido' después de la primera interacción
+            if lead.estado_lead == 'Pendiente':
+                lead.estado_lead = 'Atendido'
+                lead.save()
+            messages.success(request, 'Interacción registrada con éxito.')
+            return redirect('gestion:detalle_lead', lead_id=lead.id_lead)
+
+    context = {
+        'lead': lead,
+        'interacciones': interacciones,
+        'form': form
+    }
+    return render(request, 'gestion/detalle_lead.html', context)
 
 @login_required
 @rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
@@ -508,3 +536,8 @@ def login_view(request):
             messages.error(request,"Usuario o contraseña inválidos.")
     form = AuthenticationForm()
     return render(request, 'gestion/login.html', {'form': form})
+
+def logout_view(request):
+    logout(request)
+    messages.info(request, "Has cerrado sesión exitosamente.")
+    return redirect('gestion:login')

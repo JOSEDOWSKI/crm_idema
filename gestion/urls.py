@@ -4,25 +4,28 @@ from . import views
 app_name = 'gestion'
 
 urlpatterns = [
-    # Ej: /gestion/
-    path('', views.dashboard, name='dashboard'),
-    # Ej: /gestion/leads/
+    # Ruta raíz de la app, redirige al dashboard
+    path('', views.dashboard, name='dashboard'), 
+    
+    # Rutas principales
+    path('dashboard/', views.dashboard, name='dashboard_explicit'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+
+    # Rutas de Leads
     path('leads/', views.listar_leads, name='listar_leads'),
-    # Ej: /gestion/leads/crear/
     path('leads/crear/', views.crear_lead, name='crear_lead'),
-    # Ej: /gestion/leads/5/convertir/
-    path('leads/<int:lead_id>/convertir/', views.convertir_lead_a_cliente, name='convertir_lead'),
-    # URL para actualizar estado de lead vía AJAX
-    path('leads/<int:lead_id>/actualizar-estado/', views.actualizar_estado_lead, name='actualizar_estado_lead'),
-    # Ej: /gestion/matriculas/
+    path('leads/<int:lead_id>/', views.detalle_lead, name='detalle_lead'),
+    path('leads/convertir/<int:lead_id>/', views.convertir_lead_a_cliente, name='convertir_lead'),
+    path('leads/actualizar_estado/<int:lead_id>/', views.actualizar_estado_lead, name='actualizar_estado_lead'),
+    
+    # Rutas de Matrículas y Clientes
     path('matriculas/', views.listar_matriculas, name='listar_matriculas'),
-    # Ej: /gestion/matriculas/3/
     path('matriculas/<int:matricula_id>/', views.detalle_matricula, name='detalle_matricula'),
-    # Ej: /gestion/clientes/1/editar/
     path('clientes/<int:cliente_id>/editar/', views.editar_cliente, name='editar_cliente'),
-    # URL para poblar la BD con datos de ejemplo
+    
+    # Rutas de utilidades y API
+    path('sql/', views.consulta_sql, name='consulta_sql'),
     path('poblar-bd/', views.poblar_bd_ejemplo, name='poblar_bd'),
-    path('consulta-sql/', views.consulta_sql, name='consulta_sql'),
-    # API endpoint
     path('api/leads/crear/', views.api_crear_lead, name='api_crear_lead'),
 ] 

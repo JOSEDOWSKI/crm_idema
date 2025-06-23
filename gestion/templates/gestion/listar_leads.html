@@ -59,7 +59,11 @@
     <tbody>
         {% for lead in leads %}
         <tr>
-            <td>{{ lead.nombre_completo }}</td>
+            <td>
+                <a href="{% url 'gestion:detalle_lead' lead.id_lead %}">
+                    {{ lead.nombre_completo }}
+                </a>
+            </td>
             <td>{{ lead.telefono }}</td>
             <td>{{ lead.genero }}</td>
             <td>{{ lead.fecha_ingreso|date:"d/m/Y H:i" }}</td>
