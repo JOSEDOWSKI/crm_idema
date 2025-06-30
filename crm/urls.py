@@ -21,6 +21,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    # Redirección desde la URL raíz hacia la aplicación gestion
+    path("", RedirectView.as_view(url="/gestion/", permanent=False), name="home"),
     path("admin/", admin.site.urls),
     path("gestion/", include("gestion.urls", namespace="gestion")),
 ]

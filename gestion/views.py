@@ -388,37 +388,43 @@ def consulta_sql(request):
     results = None
     columns = None
     error = None
+    message = None
 
-    if request.method == 'POST':
-        # Medida de seguridad básica: solo permitir consultas SELECT.
-        if query.strip().upper().startswith('SELECT'):
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute(query)
+    if request.method == 'POST' and query:
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+
+                # Si es una consulta que devuelve filas (ej. SELECT)
+                if cursor.description:
                     columns = [col[0] for col in cursor.description]
                     results = cursor.fetchall()
-                
-                # --- Lógica de descarga ---
-                if 'download' in request.POST:
-                    response = HttpResponse(content_type='text/csv')
-                    response['Content-Disposition'] = 'attachment; filename="query_results.csv"'
-                    
-                    writer = csv.writer(response)
-                    writer.writerow(columns) # Escribir cabeceras
-                    writer.writerows(results) # Escribir datos
-                    
-                    return response
 
-            except Exception as e:
-                error = f"Error al ejecutar la consulta: {e}"
-        else:
-            error = "Error: Solo se permiten consultas SELECT."
+                    # --- Lógica de descarga CSV ---
+                    if 'download' in request.POST:
+                        response = HttpResponse(content_type='text/csv')
+                        # Sanitize query for filename
+                        safe_filename = "".join([c for c in query[:20] if c.isalpha() or c.isdigit()]).rstrip() or "query"
+                        response['Content-Disposition'] = f'attachment; filename="{safe_filename}_results.csv"'
+                        
+                        writer = csv.writer(response)
+                        writer.writerow(columns) # Escribir cabeceras
+                        writer.writerows(results) # Escribir datos
+                        
+                        return response
+                else:
+                    # Si es un comando como INSERT, UPDATE, DELETE, etc.
+                    message = f"Comando ejecutado con éxito. Filas afectadas: {cursor.rowcount}"
+
+        except Exception as e:
+            error = f"Error al ejecutar la consulta: {e}"
 
     context = {
         'query': query,
         'results': results,
         'columns': columns,
         'error': error,
+        'message': message,
     }
     return render(request, 'gestion/consulta_sql.html', context)
 

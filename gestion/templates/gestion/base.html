@@ -42,6 +42,24 @@
                         </li>
                         {% endif %}
 
+                        {# Menú Super Admin: Visible solo para Superuser #}
+                        {% if request.user.is_superuser %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-warning" href="#" id="superAdminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Super Admin
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="superAdminDropdown">
+                                <li><a class="dropdown-item" href="{% url 'gestion:listar_leads' %}">Listar Leads</a></li>
+                                <li><a class="dropdown-item" href="{% url 'gestion:crear_lead' %}">Crear Lead</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'gestion:listar_matriculas' %}">Listar Matrículas</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'gestion:consulta_sql' %}">Consulta SQL</a></li>
+                                <li><a class="dropdown-item" href="{% url 'gestion:poblar_bd' %}">Poblar BD de Ejemplo</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
@@ -51,6 +69,8 @@
                                 Bienvenido, {{ request.user.first_name }} ({{ request.user.usuario.get_rol_display }})
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin Django</a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'gestion:logout' %}">Cerrar Sesión</a></li>
                             </ul>
                         </li>

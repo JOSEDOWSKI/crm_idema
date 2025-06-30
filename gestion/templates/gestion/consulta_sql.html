@@ -7,17 +7,18 @@
     <h2 class="mb-4">Ejecutar Consulta SQL Personalizada</h2>
 
     <div class="alert alert-danger" role="alert">
-        <h4 class="alert-heading">¡Atención!</h4>
+        <h4 class="alert-heading">¡Atención: Herramienta de Superusuario!</h4>
         <p>
-            Esta es una herramienta avanzada. Las consultas se ejecutan directamente en la base de datos de producción.
-            Solo se permiten consultas de tipo <strong>SELECT</strong>.
-            Una consulta mal formada o demasiado pesada puede afectar el rendimiento del sistema. Úsela con extrema precaución.
+            Estás a punto de ejecutar comandos directamente en la base de datos. Cualquier operación (incluyendo 
+            <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>DROP</code>, etc.) es permitida.
         </p>
+        <hr>
+        <p class="mb-0">Una consulta mal formada o destructiva puede afectar permanentemente los datos o el rendimiento del sistema. <strong>Úsela con extrema precaución.</strong></p>
     </div>
 
     <div class="card">
         <div class="card-header">
-            <h4>Ejecutar Consulta SQL (Solo SELECT)</h4>
+            <h4>Ejecutar Comandos SQL</h4>
         </div>
         <div class="card-body">
             <form method="post">
@@ -34,6 +35,12 @@
     {% if error %}
         <div class="alert alert-danger mt-4">
             {{ error }}
+        </div>
+    {% endif %}
+
+    {% if message %}
+        <div class="alert alert-success mt-4">
+            {{ message }}
         </div>
     {% endif %}
 
@@ -66,7 +73,7 @@
             <p><small>{{ results|length }} fila(s) devuelta(s).</small></p>
         </div>
     </div>
-    {% elif results is not None and not error %}
+    {% elif results is not None and not error and not message %}
         <div class="alert alert-info mt-4">
             La consulta se ejecutó correctamente pero no devolvió resultados.
         </div>
