@@ -5,6 +5,9 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Listado de Matrículas</h1>
+    <div>
+        <a href="{% url 'gestion:exportar_matriculas_csv' %}" class="btn btn-success">Exportar a CSV</a>
+    </div>
 </div>
 
 <table class="table table-striped table-hover">

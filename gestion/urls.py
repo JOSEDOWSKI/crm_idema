@@ -22,11 +22,14 @@ urlpatterns = [
     
     # Rutas de Matrículas y Clientes
     path('matriculas/', views.listar_matriculas, name='listar_matriculas'),
+    path('matriculas/exportar/', views.exportar_matriculas_csv, name='exportar_matriculas_csv'),
     path('matriculas/<int:matricula_id>/', views.detalle_matricula, name='detalle_matricula'),
     path('clientes/<int:cliente_id>/editar/', views.editar_cliente, name='editar_cliente'),
     
     # Rutas de utilidades y API
     path('sql/', views.consulta_sql, name='consulta_sql'),
+    path('tablas/', views.ver_todas_tablas, name='ver_todas_tablas'),
+    path('super-dashboard/', views.superadmin_dashboard, name='superadmin_dashboard'),
     path('poblar-bd/', views.poblar_bd_ejemplo, name='poblar_bd'),
     path('api/leads/crear/', views.api_crear_lead, name='api_crear_lead'),
 

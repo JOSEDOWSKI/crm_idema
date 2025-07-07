@@ -266,10 +266,16 @@ def crear_lead(request):
 def dashboard(request):
     if request.user.usuario.rol == Usuario.Roles.VENTAS:
         return redirect('gestion:listar_leads')
+    
     context = {}
     rol_usuario = request.user.usuario.rol
     context['rol_usuario'] = rol_usuario
     context['Roles'] = Usuario.Roles
+    
+    # Dashboard especial para Superadmin (ahora tiene su propia URL)
+    # if request.user.is_superuser:
+    #     return superadmin_dashboard(request)
+    
     with connection.cursor() as cursor:
         if rol_usuario in [Usuario.Roles.ADMIN, Usuario.Roles.ANALISTA]:
             cursor.execute("SELECT COUNT(*) FROM gestion_cliente;")
@@ -429,6 +435,231 @@ def consulta_sql(request):
     return render(request, 'gestion/consulta_sql.html', context)
 
 @login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN])
+def ver_todas_tablas(request):
+    """Vista para superusuario que muestra todas las tablas de la base de datos"""
+    tablas_info = []
+    
+    try:
+        with connection.cursor() as cursor:
+            # Obtener todas las tablas del esquema público
+            cursor.execute("""
+                SELECT table_name, 
+                       (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as columnas,
+                       (SELECT COUNT(*) FROM information_schema.table_constraints 
+                        WHERE table_name = t.table_name AND constraint_type = 'PRIMARY KEY') as tiene_pk
+                FROM information_schema.tables t
+                WHERE table_schema = 'public' 
+                AND table_type = 'BASE TABLE'
+                ORDER BY table_name
+            """)
+            
+            tablas = cursor.fetchall()
+            
+            for tabla in tablas:
+                nombre_tabla = tabla[0]
+                num_columnas = tabla[1]
+                tiene_pk = tabla[2]
+                
+                # Obtener información de columnas para cada tabla
+                cursor.execute("""
+                    SELECT column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns 
+                    WHERE table_name = %s 
+                    ORDER BY ordinal_position
+                """, [nombre_tabla])
+                
+                columnas = cursor.fetchall()
+                
+                # Obtener número de registros
+                try:
+                    cursor.execute(f"SELECT COUNT(*) FROM {nombre_tabla}")
+                    num_registros = cursor.fetchone()[0]
+                except:
+                    num_registros = "Error"
+                
+                # Obtener claves foráneas
+                cursor.execute("""
+                    SELECT 
+                        kcu.column_name,
+                        ccu.table_name AS foreign_table_name,
+                        ccu.column_name AS foreign_column_name
+                    FROM information_schema.table_constraints AS tc
+                    JOIN information_schema.key_column_usage AS kcu
+                        ON tc.constraint_name = kcu.constraint_name
+                        AND tc.table_schema = kcu.table_schema
+                    JOIN information_schema.constraint_column_usage AS ccu
+                        ON ccu.constraint_name = tc.constraint_name
+                        AND ccu.table_schema = tc.table_schema
+                    WHERE tc.constraint_type = 'FOREIGN KEY' 
+                    AND tc.table_name = %s
+                """, [nombre_tabla])
+                
+                foreign_keys = cursor.fetchall()
+                
+                tablas_info.append({
+                    'nombre': nombre_tabla,
+                    'num_columnas': num_columnas,
+                    'num_registros': num_registros,
+                    'tiene_pk': tiene_pk > 0,
+                    'columnas': columnas,
+                    'foreign_keys': foreign_keys
+                })
+                
+    except Exception as e:
+        error = f"Error al obtener información de las tablas: {e}"
+        tablas_info = []
+    
+    context = {
+        'tablas_info': tablas_info,
+        'error': error if 'error' in locals() else None,
+    }
+    return render(request, 'gestion/ver_todas_tablas.html', context)
+
+@login_required
+def superadmin_dashboard(request):
+    """Dashboard especial para superusuarios con información detallada del sistema"""
+    context = {}
+    
+    try:
+        with connection.cursor() as cursor:
+            # === ESTADÍSTICAS GENERALES ===
+            cursor.execute("SELECT COUNT(*) FROM gestion_lead;")
+            total_leads = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM gestion_cliente;")
+            total_clientes = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM gestion_matricula;")
+            total_matriculas = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM gestion_pago;")
+            total_pagos = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM gestion_usuario WHERE activo = true;")
+            usuarios_activos = cursor.fetchone()[0]
+            
+            # === ESTADÍSTICAS FINANCIERAS ===
+            cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM gestion_pago;")
+            total_recaudado = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM gestion_pago WHERE EXTRACT(YEAR FROM fecha_pago) = EXTRACT(YEAR FROM NOW()) AND EXTRACT(MONTH FROM fecha_pago) = EXTRACT(MONTH FROM NOW());")
+            recaudado_este_mes = cursor.fetchone()[0]
+            
+            # === ESTADÍSTICAS DE CONVERSIÓN ===
+            tasa_conversion = (total_clientes / total_leads * 100) if total_leads > 0 else 0
+            
+            cursor.execute("SELECT COUNT(*) FROM gestion_matricula WHERE estado = 'Activo';")
+            matriculas_activas = cursor.fetchone()[0]
+            
+            tasa_retencion = (matriculas_activas / total_matriculas * 100) if total_matriculas > 0 else 0
+            
+            # === ESTADÍSTICAS POR MES ===
+            now = timezone.now()
+            cursor.execute("""
+                SELECT EXTRACT(MONTH FROM fecha_ingreso) as mes, COUNT(*) as cantidad
+                FROM gestion_lead 
+                WHERE EXTRACT(YEAR FROM fecha_ingreso) = %s
+                GROUP BY EXTRACT(MONTH FROM fecha_ingreso)
+                ORDER BY mes
+            """, [now.year])
+            leads_por_mes = cursor.fetchall()
+            
+            # === TOP PROGRAMAS ===
+            cursor.execute("""
+                SELECT p.nombre_programa, COUNT(m.id_matricula) as matriculas
+                FROM gestion_programaacademico p
+                LEFT JOIN gestion_matricula m ON p.id_programa = m.id_programa
+                GROUP BY p.id_programa, p.nombre_programa
+                ORDER BY matriculas DESC
+                LIMIT 5
+            """)
+            top_programas = cursor.fetchall()
+            
+            # === TOP ASESORES ===
+            cursor.execute("""
+                SELECT u.nombre_usuario, COUNT(l.id_lead) as leads, COUNT(c.id_cliente) as conversiones
+                FROM gestion_usuario u
+                LEFT JOIN gestion_lead l ON u.id_usuario = l.id_usuario_atencion
+                LEFT JOIN gestion_cliente c ON l.id_lead = c.id_lead_id
+                WHERE u.rol = 'VENTAS'
+                GROUP BY u.id_usuario, u.nombre_usuario
+                ORDER BY leads DESC
+                LIMIT 5
+            """)
+            top_asesores = cursor.fetchall()
+            
+            # === ESTADÍSTICAS DE LA BASE DE DATOS ===
+            cursor.execute("""
+                SELECT COUNT(*) FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+            """)
+            total_tablas = cursor.fetchone()[0]
+            
+            cursor.execute("""
+                SELECT pg_size_pretty(pg_database_size(current_database()))
+            """)
+            tamano_bd = cursor.fetchone()[0]
+            
+            # === ÚLTIMAS ACTIVIDADES ===
+            cursor.execute("""
+                SELECT 'Lead' as tipo, l.nombre_completo, l.fecha_ingreso, u.nombre_usuario
+                FROM gestion_lead l
+                LEFT JOIN gestion_usuario u ON l.id_usuario_atencion = u.id_usuario
+                ORDER BY l.fecha_ingreso DESC
+                LIMIT 5
+            """)
+            ultimas_actividades = cursor.fetchall()
+            
+            # === ESTADÍSTICAS DE PAGOS ===
+            cursor.execute("""
+                SELECT concepto, COUNT(*) as cantidad, SUM(monto) as total
+                FROM gestion_pago
+                GROUP BY concepto
+                ORDER BY total DESC
+            """)
+            estadisticas_pagos = cursor.fetchall()
+            
+            context.update({
+                # Estadísticas generales
+                'total_leads': total_leads,
+                'total_clientes': total_clientes,
+                'total_matriculas': total_matriculas,
+                'total_pagos': total_pagos,
+                'usuarios_activos': usuarios_activos,
+                
+                # Estadísticas financieras
+                'total_recaudado': total_recaudado,
+                'recaudado_este_mes': recaudado_este_mes,
+                
+                # Tasas de conversión
+                'tasa_conversion': round(tasa_conversion, 2),
+                'tasa_retencion': round(tasa_retencion, 2),
+                'matriculas_activas': matriculas_activas,
+                
+                # Datos para gráficos
+                'leads_por_mes': leads_por_mes,
+                'top_programas': top_programas,
+                'top_asesores': top_asesores,
+                
+                # Información del sistema
+                'total_tablas': total_tablas,
+                'tamano_bd': tamano_bd,
+                
+                # Actividades recientes
+                'ultimas_actividades': ultimas_actividades,
+                'estadisticas_pagos': estadisticas_pagos,
+                
+                # Año actual
+                'ano_actual': now.year,
+            })
+            
+    except Exception as e:
+        context['error'] = f"Error al cargar estadísticas: {e}"
+    
+    return render(request, 'gestion/superadmin_dashboard.html', context)
+
+@login_required
 @rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def exportar_leads_csv(request):
     response = HttpResponse(content_type='text/csv')
@@ -441,9 +672,10 @@ def exportar_leads_csv(request):
     ])
     with connection.cursor() as cursor:
         cursor.execute('''
-            SELECT l.nombre_completo, l.telefono, l.email, l.genero, l.estado_lead, 
+            SELECT l.nombre_completo, l.telefono, c.email, l.genero, l.estado_lead, 
                    u.nombre_usuario, m.nombre_medio, d.nombre, l.fecha_ingreso
             FROM gestion_lead l
+            LEFT JOIN gestion_cliente c ON l.id_lead = c.id_lead_id
             LEFT JOIN gestion_usuario u ON l.id_usuario_atencion = u.id_usuario
             LEFT JOIN gestion_mediocontacto m ON l.id_medio_contacto = m.id_medio_contacto
             LEFT JOIN gestion_distrito d ON l.id_distrito = d.id_distrito
@@ -455,6 +687,39 @@ def exportar_leads_csv(request):
                 row[6] if row[6] else 'N/A',
                 row[7] if row[7] else 'N/A',
                 row[8].strftime('%Y-%m-%d %H:%M:%S') if row[8] else ''
+            ])
+    return response
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+def exportar_matriculas_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="listado_matriculas.csv"'
+    response.write(u'\ufeff'.encode('utf8'))
+    writer = csv.writer(response)
+    writer.writerow([
+        'Nombre Completo', 'DNI', 'Email', 'Programa', 'Modalidad', 'Estado', 
+        'Fecha Inscripción', 'Usuario Inscripción', 'Observación'
+    ])
+    with connection.cursor() as cursor:
+        cursor.execute('''
+            SELECT l.nombre_completo, c.dni, c.email, p.nombre_programa, 
+                   m.nombre_modalidad, mat.estado, mat.fecha_inscripcion, 
+                   u.nombre_usuario, mat.observacion
+            FROM gestion_matricula mat
+            JOIN gestion_cliente c ON mat.id_cliente = c.id_cliente
+            JOIN gestion_lead l ON c.id_lead_id = l.id_lead
+            JOIN gestion_programaacademico p ON mat.id_programa = p.id_programa
+            JOIN gestion_modalidad m ON mat.id_modalidad = m.id_modalidad
+            JOIN gestion_usuario u ON mat.id_usuario_inscripcion = u.id_usuario
+            ORDER BY mat.fecha_inscripcion DESC
+        ''')
+        for row in cursor.fetchall():
+            writer.writerow([
+                row[0], row[1], row[2], row[3], row[4], row[5],
+                row[6].strftime('%Y-%m-%d %H:%M:%S') if row[6] else '',
+                row[7] if row[7] else 'N/A',
+                row[8] if row[8] else ''
             ])
     return response
 

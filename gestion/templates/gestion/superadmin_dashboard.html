@@ -1,0 +1,388 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Superadmin Dashboard - CRM Académico{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header del Superadmin -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-0">👑 Superadmin Dashboard</h1>
+            <p class="text-muted mb-0">Panel de control avanzado del sistema CRM Académico</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'gestion:ver_todas_tablas' %}" class="btn btn-outline-primary">
+                <i class="fas fa-database"></i> Ver Tablas BD
+            </a>
+            <a href="{% url 'gestion:consulta_sql' %}" class="btn btn-outline-success">
+                <i class="fas fa-code"></i> Consulta SQL
+            </a>
+            <a href="{% url 'admin:index' %}" class="btn btn-outline-warning">
+                <i class="fas fa-cog"></i> Admin Django
+            </a>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            <strong>Error:</strong> {{ error }}
+        </div>
+    {% endif %}
+
+    <!-- KPIs Principales -->
+    <div class="row mb-4">
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_leads }}</h4>
+                            <small>Total Leads</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_clientes }}</h4>
+                            <small>Clientes</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-graduate fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_matriculas }}</h4>
+                            <small>Matrículas</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-certificate fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_pagos }}</h4>
+                            <small>Pagos</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-money-bill-wave fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-secondary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ usuarios_activos }}</h4>
+                            <small>Usuarios Activos</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-shield fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-dark text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_tablas }}</h4>
+                            <small>Tablas BD</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-database fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas Financieras y Conversión -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Estadísticas Financieras</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h3 class="text-success">S/ {{ total_recaudado|floatformat:2 }}</h3>
+                            <small class="text-muted">Total Recaudado</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-info">S/ {{ recaudado_este_mes|floatformat:2 }}</h3>
+                            <small class="text-muted">Este Mes</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="d-flex justify-content-between">
+                                <span>Tasa de Conversión:</span>
+                                <span class="badge bg-success">{{ tasa_conversion }}%</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex justify-content-between">
+                                <span>Tasa de Retención:</span>
+                                <span class="badge bg-info">{{ tasa_retencion }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-server"></i> Información del Sistema</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <p><strong>Tamaño BD:</strong> {{ tamano_bd }}</p>
+                            <p><strong>Matrículas Activas:</strong> {{ matriculas_activas }}</p>
+                        </div>
+                        <div class="col-6">
+                            <p><strong>Año Actual:</strong> {{ ano_actual }}</p>
+                            <p><strong>Total Tablas:</strong> {{ total_tablas }}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'gestion:ver_todas_tablas' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> Ver Estructura BD
+                        </a>
+                        <a href="{% url 'gestion:poblar_bd' %}" class="btn btn-sm btn-outline-warning">
+                            <i class="fas fa-database"></i> Poblar BD de Ejemplo
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Programas y Asesores -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-trophy"></i> Top 5 Programas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Programa</th>
+                                    <th>Matrículas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for programa in top_programas %}
+                                <tr>
+                                    <td>{{ programa.0 }}</td>
+                                    <td><span class="badge bg-primary">{{ programa.1 }}</span></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted">No hay datos</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-star"></i> Top 5 Asesores</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Asesor</th>
+                                    <th>Leads</th>
+                                    <th>Conversiones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for asesor in top_asesores %}
+                                <tr>
+                                    <td>{{ asesor.0 }}</td>
+                                    <td><span class="badge bg-info">{{ asesor.1 }}</span></td>
+                                    <td><span class="badge bg-success">{{ asesor.2 }}</span></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">No hay datos</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas de Pagos y Actividades Recientes -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Estadísticas de Pagos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Concepto</th>
+                                    <th>Cantidad</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pago in estadisticas_pagos %}
+                                <tr>
+                                    <td>{{ pago.0 }}</td>
+                                    <td><span class="badge bg-secondary">{{ pago.1 }}</span></td>
+                                    <td><strong>S/ {{ pago.2|floatformat:2 }}</strong></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted">No hay pagos registrados</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-clock"></i> Actividades Recientes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for actividad in ultimas_actividades %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ actividad.1 }}</strong>
+                                <br>
+                                <small class="text-muted">{{ actividad.0 }} - {{ actividad.3 }}</small>
+                            </div>
+                            <small class="text-muted">{{ actividad.2|date:"d/m/Y H:i" }}</small>
+                        </div>
+                        {% empty %}
+                        <div class="text-center text-muted py-3">
+                            No hay actividades recientes
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt"></i> Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'gestion:listar_leads' %}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-users"></i><br>Gestionar Leads
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'gestion:listar_matriculas' %}" class="btn btn-outline-success w-100">
+                                <i class="fas fa-certificate"></i><br>Ver Matrículas
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'gestion:consulta_sql' %}" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-code"></i><br>Consulta SQL
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'admin:index' %}" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-cog"></i><br>Admin Django
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.opacity-75 {
+    opacity: 0.75;
+}
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
+.list-group-item:first-child {
+    border-top: none;
+}
+.list-group-item:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %} 

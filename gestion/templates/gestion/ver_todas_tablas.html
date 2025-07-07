@@ -1,0 +1,195 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Todas las Tablas de la Base de Datos{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📊 Todas las Tablas de la Base de Datos</h2>
+        <div>
+            <a href="{% url 'gestion:consulta_sql' %}" class="btn btn-primary">Consulta SQL</a>
+            <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">Dashboard</a>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            <strong>Error:</strong> {{ error }}
+        </div>
+    {% endif %}
+
+    <div class="row">
+        {% for tabla in tablas_info %}
+        <div class="col-lg-6 col-xl-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table me-2"></i>{{ tabla.nombre }}
+                    </h5>
+                    <div>
+                        {% if tabla.tiene_pk %}
+                            <span class="badge bg-success">PK</span>
+                        {% endif %}
+                        <span class="badge bg-info">{{ tabla.num_columnas }} cols</span>
+                        <span class="badge bg-warning">{{ tabla.num_registros }} reg</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>📋 Columnas:</h6>
+                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Columna</th>
+                                        <th>Tipo</th>
+                                        <th>Null</th>
+                                        <th>Default</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for columna in tabla.columnas %}
+                                    <tr>
+                                        <td><code>{{ columna.0 }}</code></td>
+                                        <td><small>{{ columna.1 }}</small></td>
+                                        <td>
+                                            {% if columna.2 == 'YES' %}
+                                                <span class="text-danger">✓</span>
+                                            {% else %}
+                                                <span class="text-success">✗</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><small>{{ columna.3|default:"-" }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {% if tabla.foreign_keys %}
+                    <div class="mb-3">
+                        <h6>🔗 Claves Foráneas:</h6>
+                        <ul class="list-unstyled">
+                            {% for fk in tabla.foreign_keys %}
+                            <li>
+                                <small>
+                                    <code>{{ fk.0 }}</code> → 
+                                    <code>{{ fk.1 }}.{{ fk.2 }}</code>
+                                </small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-outline-primary" type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#query-{{ tabla.nombre|slugify }}" 
+                                aria-expanded="false">
+                            <i class="fas fa-code"></i> Ver Query
+                        </button>
+                        <a href="{% url 'gestion:consulta_sql' %}?query=SELECT * FROM {{ tabla.nombre }} LIMIT 10;" 
+                           class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-eye"></i> Ver Datos
+                        </a>
+                    </div>
+
+                    <div class="collapse mt-2" id="query-{{ tabla.nombre|slugify }}">
+                        <div class="card card-body bg-light">
+                            <code>SELECT * FROM {{ tabla.nombre }} LIMIT 10;</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No se encontraron tablas en la base de datos.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Resumen estadístico -->
+    {% if tablas_info %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Resumen de la Base de Datos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-primary">{{ tablas_info|length }}</h4>
+                                <small>Total Tablas</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-success">
+                                    {% with total_columnas=tablas_info|length %}
+                                        {% for tabla in tablas_info %}
+                                            {% if forloop.first %}
+                                                {% widthratio tabla.num_columnas 1 1 %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endwith %}
+                                </h4>
+                                <small>Total Columnas</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-warning">
+                                    {% with total_registros=0 %}
+                                        {% for tabla in tablas_info %}
+                                            {% if tabla.num_registros != "Error" %}
+                                                {{ tabla.num_registros|add:total_registros }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endwith %}
+                                </h4>
+                                <small>Total Registros</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-info">
+                                    {% with total_fk=0 %}
+                                        {% for tabla in tablas_info %}
+                                            {{ tabla.foreign_keys|length|add:total_fk }}
+                                        {% endfor %}
+                                    {% endwith %}
+                                </h4>
+                                <small>Total FK</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.table-responsive {
+    font-size: 0.85rem;
+}
+.badge {
+    font-size: 0.7rem;
+}
+</style>
+{% endblock %} 
