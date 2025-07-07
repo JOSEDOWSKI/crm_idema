@@ -1,0 +1,86 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{Guía Técnica de Programación\\SGUL - Sistema de Gestión Universitaria}
+\author{Equipo de Desarrollo}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Tecnologías y Arquitectura}
+\begin{itemize}
+    \item \textbf{Framework principal:} Django (Python)
+    \item \textbf{Base de datos:} PostgreSQL (recomendado) o SQLite (para pruebas)
+    \item \textbf{Frontend:} Templates HTML con Django Template Language (DTL), CSS básico, JS mínimo
+    \item \textbf{Gestión de dependencias:} requirements.txt
+    \item \textbf{Control de versiones:} Git
+\end{itemize}
+
+\section{Estructura del Proyecto}
+\begin{verbatim}
+sgul/
+├── crm/                # Configuración global de Django (settings, urls, wsgi, asgi)
+├── gestion/            # App principal: modelos, vistas, templates, urls, forms, etc.
+│   ├── migrations/     # Migraciones de la base de datos
+│   ├── templates/      # Archivos HTML organizados por vistas
+│   ├── static/         # (opcional) Archivos estáticos propios
+│   ├── models.py       # Modelos de datos (solo para autenticación y mínimos)
+│   ├── views.py        # Lógica de vistas (muchas usando SQL puro)
+│   ├── urls.py         # Rutas de la app
+│   ├── forms.py        # Formularios personalizados
+│   ├── decorators.py   # Decoradores para permisos y roles
+│   └── ...             # Otros archivos auxiliares
+├── manage.py           # Comando principal de Django
+├── requirements.txt    # Dependencias del proyecto
+└── README.md           # Guía de instalación y uso
+\end{verbatim}
+
+\section{Decisiones de Programación}
+\begin{enumerate}[label=\alph*)]
+    \item \textbf{Uso de SQL puro:} Muchas vistas usan consultas SQL directas (\texttt{cursor.execute(...)}) en vez del ORM de Django. Los resultados se transforman a diccionarios para facilitar su uso en los templates. Se cuida la seguridad usando parámetros en las consultas.
+    \item \textbf{Roles y permisos:} Se implementan roles (Superadmin, Admin, Ventas, etc.) usando un campo personalizado en el modelo de usuario. Se usan decoradores para restringir el acceso a vistas según el rol. Los menús y enlaces en los templates se muestran/ocultan según el rol.
+    \item \textbf{Templates y navegación:} Se usa un template base (\texttt{base.html}) con bloques para heredar. El menú de navegación se adapta dinámicamente según el rol. Se usan templates separados para cada funcionalidad.
+    \item \textbf{Dashboards y reportes:} El dashboard principal muestra KPIs y estadísticas usando consultas SQL agregadas. El superadmin tiene un dashboard especial con más métricas y accesos rápidos.
+    \item \textbf{Exportación/Importación de datos:} Se implementan vistas para exportar datos a CSV/XLSX y para importar desde archivos. Se usa la librería \texttt{openpyxl} para manejar archivos Excel.
+    \item \textbf{Consultas SQL personalizadas:} El superadmin puede ejecutar cualquier consulta SQL desde el panel, con manejo de errores y mensajes de éxito.
+    \item \textbf{Visualización de la base de datos:} Hay una vista especial para ver todas las tablas, columnas, claves foráneas y estadísticas de la base de datos.
+\end{enumerate}
+
+\section{Flujo de Desarrollo}
+\begin{enumerate}
+    \item \textbf{Modelado inicial:} Se definieron los modelos mínimos en Django para autenticación y roles. El resto de la lógica se maneja con SQL puro.
+    \item \textbf{Migraciones y carga de datos:} Se usaron migraciones de Django para crear las tablas base y scripts SQL para poblar datos iniciales.
+    \item \textbf{Vistas y templates:} Se crearon vistas para cada funcionalidad (leads, matrículas, clientes, dashboards, etc.). Se adaptaron los templates para trabajar con resultados de SQL.
+    \item \textbf{Roles y permisos:} Se implementaron decoradores y lógica en los templates para restringir accesos.
+    \item \textbf{Dashboards y reportes:} Se programaron consultas SQL agregadas para mostrar estadísticas y KPIs.
+    \item \textbf{Herramientas de administración:} Exportación/importación de datos, ejecución de consultas SQL personalizadas, visualización de la estructura de la base de datos.
+    \item \textbf{Pruebas y ajustes:} Se probaron los flujos principales con distintos roles y se corrigieron errores de integración.
+\end{enumerate}
+
+\section{Buenas Prácticas y Seguridad}
+\begin{itemize}
+    \item Se usan parámetros en las consultas SQL para evitar inyecciones.
+    \item Los archivos sensibles (contraseñas, claves) no se suben al repo.
+    \item Se recomienda usar variables de entorno para credenciales en producción.
+    \item Se documenta todo en el README y en los comentarios del código.
+\end{itemize}
+
+\section{¿Cómo contribuir?}
+\begin{enumerate}
+    \item Haz un fork o clona el repo.
+    \item Crea una rama para tu funcionalidad.
+    \item Haz tus cambios y pruebas.
+    \item Haz un pull request describiendo tu aporte.
+\end{enumerate}
+
+\section{Notas finales}
+El sistema está pensado para ser fácilmente extensible: puedes agregar nuevas vistas, templates o reportes siguiendo la misma lógica. Si tienes dudas sobre alguna consulta SQL o flujo, revisa los comentarios en las vistas o pregunta al responsable técnico.
+
+\end{document} 
