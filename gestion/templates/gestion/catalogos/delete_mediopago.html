@@ -1,0 +1,10 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Eliminar Medio de Pago{% endblock %}
+{% block content %}
+<h2>Eliminar Medio de Pago</h2>
+<p>¿Estás seguro de que deseas eliminar el medio de pago <strong>{{ obj }}</strong>?</p>
+<form method="post">{% csrf_token %}
+    <button type="submit" class="btn btn-danger">Eliminar</button>
+    <a href="{% url 'gestion:catalogo_list' 'mediopago' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %} 

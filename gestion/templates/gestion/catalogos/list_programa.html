@@ -1,0 +1,24 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Programas Académicos{% endblock %}
+{% block content %}
+<h2>Programas Académicos</h2>
+<a href="{% url 'gestion:catalogo_create' 'programa' %}" class="btn btn-success mb-2">Crear Programa</a>
+<table class="table table-striped">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Tipo</th><th>Acciones</th></tr></thead>
+    <tbody>
+    {% for obj in objetos %}
+        <tr>
+            <td>{{ obj.id_programa }}</td>
+            <td>{{ obj.nombre_programa }}</td>
+            <td>{{ obj.tipo_programa }}</td>
+            <td>
+                <a href="{% url 'gestion:catalogo_edit' 'programa' obj.id_programa %}" class="btn btn-warning btn-sm">Editar</a>
+                <a href="{% url 'gestion:catalogo_delete' 'programa' obj.id_programa %}" class="btn btn-danger btn-sm">Eliminar</a>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">No hay programas.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 

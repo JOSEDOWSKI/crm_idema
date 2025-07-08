@@ -12,13 +12,50 @@
         </div>
     </div>
 
+    <!-- Formulario de Búsqueda y Filtros -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Búsqueda y Filtros</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Buscar por nombre o teléfono:</label>
+                    <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Nombre o teléfono...">
+                </div>
+                <div class="col-md-3">
+                    <label for="estado" class="form-label">Estado:</label>
+                    <select class="form-select" id="estado" name="estado">
+                        <option value="">Todos los estados</option>
+                        {% for estado in estados %}
+                            <option value="{{ estado.0 }}" {% if estado_filter == estado.0 %}selected{% endif %}>{{ estado.1 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="medio" class="form-label">Medio de contacto:</label>
+                    <select class="form-select" id="medio" name="medio">
+                        <option value="">Todos los medios</option>
+                        {% for medio in medios_contacto %}
+                            <option value="{{ medio.id_medio_contacto }}" {% if medio_filter == medio.id_medio_contacto|stringformat:"s" %}selected{% endif %}>{{ medio.nombre_medio }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">Buscar</button>
+                    <a href="{% url 'gestion:listar_leads' %}" class="btn btn-secondary">Limpiar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="table-responsive">
         <table class="table table-striped table-hover">
             <thead class="thead-dark">
                 <tr>
                     {% with 'nombre_completo' as sort_field %}
                     <th>
-                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}&search={{ search_query }}&estado={{ estado_filter }}&medio={{ medio_filter }}">
                             Nombre
                             {% if current_sort == sort_field %}{% if current_direction == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
                         </a>
@@ -28,7 +65,7 @@
                     <th>Género</th>
                     {% with 'fecha_ingreso' as sort_field %}
                     <th>
-                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}&search={{ search_query }}&estado={{ estado_filter }}&medio={{ medio_filter }}">
                             Fecha Ingreso
                             {% if current_sort == sort_field %}{% if current_direction == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
                         </a>
@@ -36,7 +73,7 @@
                     {% endwith %}
                     {% with 'estado_lead' as sort_field %}
                     <th>
-                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}&search={{ search_query }}&estado={{ estado_filter }}&medio={{ medio_filter }}">
                             Estado
                             {% if current_sort == sort_field %}{% if current_direction == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
                         </a>

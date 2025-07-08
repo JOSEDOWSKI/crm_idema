@@ -1,0 +1,10 @@
+{% extends 'gestion/base.html' %}
+{% block title %}{{ accion }} Provincia{% endblock %}
+{% block content %}
+<h2>{{ accion }} Provincia</h2>
+<form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{% url 'gestion:catalogo_list' 'provincia' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %} 

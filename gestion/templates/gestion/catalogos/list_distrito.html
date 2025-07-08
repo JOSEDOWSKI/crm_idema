@@ -1,0 +1,24 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Distritos{% endblock %}
+{% block content %}
+<h2>Distritos</h2>
+<a href="{% url 'gestion:catalogo_create' 'distrito' %}" class="btn btn-success mb-2">Crear Distrito</a>
+<table class="table table-striped">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Provincia</th><th>Acciones</th></tr></thead>
+    <tbody>
+    {% for obj in objetos %}
+        <tr>
+            <td>{{ obj.id_distrito }}</td>
+            <td>{{ obj.nombre }}</td>
+            <td>{{ obj.id_provincia.nombre }}</td>
+            <td>
+                <a href="{% url 'gestion:catalogo_edit' 'distrito' obj.id_distrito %}" class="btn btn-warning btn-sm">Editar</a>
+                <a href="{% url 'gestion:catalogo_delete' 'distrito' obj.id_distrito %}" class="btn btn-danger btn-sm">Eliminar</a>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">No hay distritos.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 

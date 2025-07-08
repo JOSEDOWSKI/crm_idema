@@ -1,0 +1,23 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Modalidades{% endblock %}
+{% block content %}
+<h2>Modalidades</h2>
+<a href="{% url 'gestion:catalogo_create' 'modalidad' %}" class="btn btn-success mb-2">Crear Modalidad</a>
+<table class="table table-striped">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Acciones</th></tr></thead>
+    <tbody>
+    {% for obj in objetos %}
+        <tr>
+            <td>{{ obj.id_modalidad }}</td>
+            <td>{{ obj.nombre_modalidad }}</td>
+            <td>
+                <a href="{% url 'gestion:catalogo_edit' 'modalidad' obj.id_modalidad %}" class="btn btn-warning btn-sm">Editar</a>
+                <a href="{% url 'gestion:catalogo_delete' 'modalidad' obj.id_modalidad %}" class="btn btn-danger btn-sm">Eliminar</a>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="3">No hay modalidades.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 

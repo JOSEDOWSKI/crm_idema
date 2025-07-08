@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db import transaction, connection
+from django.db import transaction, connection, models
 from django.contrib import messages
 from django.db.models import Count, Sum, Q, F, FloatField, Case, When, Value
 from django.utils import timezone
 from django.core.serializers.json import DjangoJSONEncoder
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
@@ -16,18 +16,48 @@ import json
 import random
 import csv
 from datetime import timedelta
-from .forms import LeadForm, ConvertirLeadForm, PagoForm, ClienteEditForm, LeadEditForm, InteraccionForm
+from .forms import LeadForm, ConvertirLeadForm, PagoForm, ClienteEditForm, LeadEditForm, InteraccionForm, ObservacionLeadForm, MatriculaEditForm, ObservacionMatriculaForm, PeriodoAcademicoForm, NotaForm, AsistenciaForm
 from .models import (
     Lead, LeadInteresPrograma, Cliente, Matricula, Pago, Usuario,
     MedioContacto, Modalidad, MedioPago, ProgramaAcademico,
-    Departamento, Provincia, Distrito
+    Departamento, Provincia, Distrito, ObservacionLead, ObservacionMatricula,
+    PeriodoAcademico, Nota, Asistencia
 )
+from django.forms import modelform_factory
+from django.urls import reverse
+from functools import wraps
+
+def reset_db_connection():
+    """Reset database connection to handle cursor errors"""
+    try:
+        connection.close()
+        # Force a new connection
+        connection.ensure_connection()
+    except Exception:
+        pass
+
+def handle_cursor_errors(func):
+    """Decorator to handle PostgreSQL cursor errors"""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if 'cursor' in str(e).lower() or 'InvalidCursorName' in str(e):
+                reset_db_connection()
+                return func(*args, **kwargs)
+            raise
+    return wrapper
 
 # Create your views here.
 
 @login_required
 @rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def listar_leads(request):
+    # Parámetros de búsqueda y filtros
+    search_query = request.GET.get('search', '')
+    estado_filter = request.GET.get('estado', '')
+    medio_filter = request.GET.get('medio', '')
+    
     sort_by = request.GET.get('sort', 'fecha_ingreso')
     direction = request.GET.get('direction', 'desc')
     valid_sort_fields = [
@@ -47,6 +77,25 @@ def listar_leads(request):
     }
     order_by_field = sort_map.get(sort_by, 'l.fecha_ingreso')
     order_by = f"{order_by_field} {'DESC' if direction == 'desc' else 'ASC'}"
+    
+    # Construir la consulta SQL con filtros
+    where_conditions = []
+    params = []
+    
+    if search_query:
+        where_conditions.append("(l.nombre_completo ILIKE %s OR l.telefono ILIKE %s)")
+        params.extend([f'%{search_query}%', f'%{search_query}%'])
+    
+    if estado_filter:
+        where_conditions.append("l.estado_lead = %s")
+        params.append(estado_filter)
+    
+    if medio_filter:
+        where_conditions.append("m.id_medio_contacto = %s")
+        params.append(medio_filter)
+    
+    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+    
     with connection.cursor() as cursor:
         cursor.execute(f'''
             SELECT l.id_lead, l.nombre_completo, l.telefono, l.genero, l.fecha_ingreso, l.estado_lead,
@@ -54,8 +103,9 @@ def listar_leads(request):
             FROM gestion_lead l
             LEFT JOIN gestion_usuario u ON l.id_usuario_atencion = u.id_usuario
             LEFT JOIN gestion_mediocontacto m ON l.id_medio_contacto = m.id_medio_contacto
+            WHERE {where_clause}
             ORDER BY {order_by}
-        ''')
+        ''', params)
         rows = cursor.fetchall()
         leads = [
             {
@@ -70,50 +120,110 @@ def listar_leads(request):
             }
             for row in rows
         ]
+    
+    # Obtener opciones para filtros
+    estados = Lead.ESTADO_LEAD_CHOICES
+    medios_contacto = MedioContacto.objects.all()
+    
     context = {
         'leads': leads,
         'current_sort': sort_by,
         'current_direction': direction,
+        'search_query': search_query,
+        'estado_filter': estado_filter,
+        'medio_filter': medio_filter,
+        'estados': estados,
+        'medios_contacto': medios_contacto,
     }
     return render(request, 'gestion/listar_leads.html', context)
 
 @login_required
 @rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def detalle_lead(request, lead_id):
-    lead = get_object_or_404(Lead, pk=lead_id)
-    interacciones = lead.interacciones.all()
-    form = InteraccionForm()
-
-    if request.method == 'POST':
-        form = InteraccionForm(request.POST)
-        if form.is_valid():
-            interaccion = form.save(commit=False)
-            interaccion.id_lead = lead
-            interaccion.id_usuario = request.user.usuario # Asigna el usuario logueado
-            interaccion.save()
-            # Cambia el estado del lead a 'Atendido' después de la primera interacción
-            if lead.estado_lead == 'Pendiente':
-                lead.estado_lead = 'Atendido'
-                lead.save()
-            messages.success(request, 'Interacción registrada con éxito.')
-            return redirect('gestion:detalle_lead', lead_id=lead.id_lead)
-
+    lead = get_object_or_404(Lead, id_lead=lead_id)
+    
+    # Manejar nueva observación
+    if request.method == 'POST' and 'agregar_observacion' in request.POST:
+        observacion_form = ObservacionLeadForm(request.POST)
+        if observacion_form.is_valid():
+            observacion = observacion_form.save(commit=False)
+            observacion.id_lead = lead
+            observacion.id_usuario = request.user.usuario
+            observacion.save()
+            messages.success(request, f'✅ Observación guardada exitosamente. Ahora tienes {lead.observaciones_lead.count()} observaciones en el historial.')
+            return redirect('gestion:detalle_lead', lead_id=lead_id)
+        else:
+            messages.error(request, '❌ Error al guardar la observación. Por favor, verifica el contenido.')
+    else:
+        observacion_form = ObservacionLeadForm()
+    
+    # Obtener observaciones del lead
+    observaciones = lead.observaciones_lead.all()
+    
+    # Estadísticas de observaciones
+    total_observaciones = observaciones.count()
+    ultima_observacion = observaciones.first()
+    observaciones_por_usuario = {}
+    
+    for obs in observaciones:
+        usuario = obs.id_usuario.nombre_usuario
+        if usuario in observaciones_por_usuario:
+            observaciones_por_usuario[usuario] += 1
+        else:
+            observaciones_por_usuario[usuario] = 1
+    
     context = {
         'lead': lead,
-        'interacciones': interacciones,
-        'form': form
+        'observacion_form': observacion_form,
+        'observaciones': observaciones,
+        'total_observaciones': total_observaciones,
+        'ultima_observacion': ultima_observacion,
+        'observaciones_por_usuario': observaciones_por_usuario,
     }
     return render(request, 'gestion/detalle_lead.html', context)
 
 @login_required
 @rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
 def listar_matriculas(request):
+    # Parámetros de búsqueda y filtros
+    search_query = request.GET.get('search', '')
+    programa_filter = request.GET.get('programa', '')
+    estado_filter = request.GET.get('estado', '')
+    
+    # Construir la consulta con filtros
     matriculas = Matricula.objects.select_related(
         'id_cliente__id_lead', 
         'id_programa', 
         'id_modalidad'
-    ).all().order_by('-fecha_inscripcion')
-    return render(request, 'gestion/listar_matriculas.html', {'matriculas': matriculas})
+    )
+    
+    if search_query:
+        matriculas = matriculas.filter(
+            Q(id_cliente__id_lead__nombre_completo__icontains=search_query) |
+            Q(id_cliente__dni__icontains=search_query)
+        )
+    
+    if programa_filter:
+        matriculas = matriculas.filter(id_programa_id=programa_filter)
+    
+    if estado_filter:
+        matriculas = matriculas.filter(estado=estado_filter)
+    
+    matriculas = matriculas.order_by('-fecha_inscripcion')
+    
+    # Obtener opciones para filtros
+    programas = ProgramaAcademico.objects.all()
+    estados = Matricula.EstadoMatricula.choices
+    
+    context = {
+        'matriculas': matriculas,
+        'search_query': search_query,
+        'programa_filter': programa_filter,
+        'estado_filter': estado_filter,
+        'programas': programas,
+        'estados': estados,
+    }
+    return render(request, 'gestion/listar_matriculas.html', context)
 
 @login_required
 @rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
@@ -125,7 +235,7 @@ def detalle_matricula(request, matricula_id):
     pagos = Pago.objects.filter(id_matricula=matricula_id).order_by('-fecha_pago')
 
     if request.method == 'POST':
-        form = PagoForm(request.POST)
+        form = PagoForm(request.POST, request.FILES)
         if form.is_valid():
             pago = form.save(commit=False)
             pago.id_matricula = matricula
@@ -147,23 +257,78 @@ def detalle_matricula(request, matricula_id):
 def editar_cliente(request, cliente_id):
     cliente = get_object_or_404(Cliente, id_cliente=cliente_id)
     lead = cliente.id_lead
+    
+    # Obtener la matrícula del cliente
+    try:
+        matricula = Matricula.objects.get(id_cliente=cliente)
+    except Matricula.DoesNotExist:
+        matricula = None
 
-    if request.method == 'POST':
+    # Manejar nueva observación de matrícula
+    if request.method == 'POST' and 'agregar_observacion_matricula' in request.POST and matricula:
+        observacion_form = ObservacionMatriculaForm(request.POST)
+        if observacion_form.is_valid():
+            observacion = observacion_form.save(commit=False)
+            observacion.id_matricula = matricula
+            observacion.id_usuario = request.user.usuario
+            observacion.save()
+            messages.success(request, f'✅ Observación de matrícula guardada exitosamente. Ahora tienes {matricula.observaciones_matricula.count()} observaciones en el historial.')
+            return redirect('gestion:editar_cliente', cliente_id=cliente_id)
+        else:
+            messages.error(request, '❌ Error al guardar la observación. Por favor, verifica el contenido.')
+    else:
+        observacion_form = ObservacionMatriculaForm()
+
+    # Manejar formularios de edición
+    if request.method == 'POST' and 'guardar_cambios' in request.POST:
         cliente_form = ClienteEditForm(request.POST, request.FILES, instance=cliente)
         lead_form = LeadEditForm(request.POST, instance=lead)
-        if cliente_form.is_valid() and lead_form.is_valid():
+        matricula_form = MatriculaEditForm(request.POST, instance=matricula) if matricula else None
+        
+        forms_valid = cliente_form.is_valid() and lead_form.is_valid()
+        if matricula_form:
+            forms_valid = forms_valid and matricula_form.is_valid()
+        
+        if forms_valid:
             cliente_form.save()
             lead_form.save()
+            if matricula_form:
+                matricula_form.save()
             messages.success(request, f'Se ha actualizado la información de {lead.nombre_completo}.')
             return redirect('gestion:listar_matriculas')
     else:
         cliente_form = ClienteEditForm(instance=cliente)
         lead_form = LeadEditForm(instance=lead)
+        matricula_form = MatriculaEditForm(instance=matricula) if matricula else None
+
+    # Obtener observaciones de la matrícula
+    observaciones_matricula = []
+    if matricula:
+        observaciones_matricula = matricula.observaciones_matricula.all()
+    
+    # Estadísticas de observaciones de matrícula
+    total_observaciones_matricula = observaciones_matricula.count()
+    ultima_observacion_matricula = observaciones_matricula.first() if observaciones_matricula else None
+    observaciones_matricula_por_usuario = {}
+    
+    for obs in observaciones_matricula:
+        usuario = obs.id_usuario.nombre_usuario
+        if usuario in observaciones_matricula_por_usuario:
+            observaciones_matricula_por_usuario[usuario] += 1
+        else:
+            observaciones_matricula_por_usuario[usuario] = 1
 
     context = {
         'cliente_form': cliente_form,
         'lead_form': lead_form,
-        'cliente': cliente
+        'matricula_form': matricula_form,
+        'observacion_form': observacion_form,
+        'cliente': cliente,
+        'matricula': matricula,
+        'observaciones_matricula': observaciones_matricula,
+        'total_observaciones_matricula': total_observaciones_matricula,
+        'ultima_observacion_matricula': ultima_observacion_matricula,
+        'observaciones_matricula_por_usuario': observaciones_matricula_por_usuario,
     }
     return render(request, 'gestion/editar_cliente.html', context)
 
@@ -668,12 +833,12 @@ def exportar_leads_csv(request):
     writer = csv.writer(response)
     writer.writerow([
         'Nombre Completo', 'Telefono', 'Email', 'Genero', 'Estado', 
-        'Asesor Asignado', 'Medio de Contacto', 'Distrito', 'Fecha de Ingreso'
+        'Asesor Asignado', 'Medio de Contacto', 'Distrito', 'Fecha de Ingreso', 'Observaciones Generales'
     ])
     with connection.cursor() as cursor:
         cursor.execute('''
             SELECT l.nombre_completo, l.telefono, c.email, l.genero, l.estado_lead, 
-                   u.nombre_usuario, m.nombre_medio, d.nombre, l.fecha_ingreso
+                   u.nombre_usuario, m.nombre_medio, d.nombre, l.fecha_ingreso, l.observaciones
             FROM gestion_lead l
             LEFT JOIN gestion_cliente c ON l.id_lead = c.id_lead_id
             LEFT JOIN gestion_usuario u ON l.id_usuario_atencion = u.id_usuario
@@ -686,7 +851,8 @@ def exportar_leads_csv(request):
                 row[5] if row[5] else 'N/A',
                 row[6] if row[6] else 'N/A',
                 row[7] if row[7] else 'N/A',
-                row[8].strftime('%Y-%m-%d %H:%M:%S') if row[8] else ''
+                row[8].strftime('%Y-%m-%d %H:%M:%S') if row[8] else '',
+                row[9] if row[9] else ''
             ])
     return response
 
@@ -723,6 +889,341 @@ def exportar_matriculas_csv(request):
             ])
     return response
 
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+def exportar_observaciones_csv(request, lead_id):
+    lead = get_object_or_404(Lead, id_lead=lead_id)
+    observaciones = lead.observaciones_lead.all()
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="observaciones_{lead.nombre_completo.replace(" ", "_")}.csv"'
+    response.write(u'\ufeff'.encode('utf8'))
+    writer = csv.writer(response)
+    
+    writer.writerow([
+        'Fecha y Hora', 'Usuario', 'Observación'
+    ])
+    
+    for obs in observaciones:
+        writer.writerow([
+            obs.fecha_observacion.strftime('%Y-%m-%d %H:%M:%S'),
+            obs.id_usuario.nombre_usuario,
+            obs.observacion
+        ])
+    
+    return response
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+def exportar_observaciones_matricula_csv(request, matricula_id):
+    matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
+    observaciones = matricula.observaciones_matricula.all()
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="observaciones_matricula_{matricula.id_cliente.id_lead.nombre_completo.replace(" ", "_")}.csv"'
+    response.write(u'\ufeff'.encode('utf8'))
+    writer = csv.writer(response)
+    
+    writer.writerow([
+        'Fecha y Hora', 'Usuario', 'Observación'
+    ])
+    
+    for obs in observaciones:
+        writer.writerow([
+            obs.fecha_observacion.strftime('%Y-%m-%d %H:%M:%S'),
+            obs.id_usuario.nombre_usuario,
+            obs.observacion
+        ])
+    
+    return response
+
+# ==============================================================
+# VISTAS ACADÉMICAS (PERÍODOS, NOTAS Y ASISTENCIAS)
+# ==============================================================
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@handle_cursor_errors
+def gestionar_notas_matricula(request, matricula_id):
+    """Vista para gestionar notas de una matrícula específica"""
+    matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
+    
+    try:
+        # Obtener períodos disponibles según los pagos de pensión realizados
+        pagos_pension = list(Pago.objects.filter(
+            id_matricula=matricula,
+            concepto='Pensión'
+        ).values_list('numero_cuota', flat=True).distinct())
+        
+        # Obtener períodos hasta el período actual (cuota pagada + 1)
+        max_cuota_pagada = max(pagos_pension) if pagos_pension else 0
+        periodo_actual = max_cuota_pagada + 1  # Si pagó 4 cuotas, está cursando el 5to período
+        
+        # Limitar el período actual al número máximo de pensiones del programa
+        max_periodos_programa = matricula.id_programa.numero_pensiones
+        periodo_actual = min(periodo_actual, max_periodos_programa)
+        
+        periodos = list(PeriodoAcademico.objects.filter(
+            numero_periodo__lte=periodo_actual,
+            activo=True
+        ).order_by('numero_periodo'))
+        
+        # Obtener notas existentes
+        notas = list(Nota.objects.filter(id_matricula=matricula).order_by('-fecha_registro'))
+        
+    except Exception as e:
+        # Si hay error de cursor, intentar con una nueva conexión
+        reset_db_connection()
+        
+        # Reintentar la consulta
+        pagos_pension = list(Pago.objects.filter(
+            id_matricula=matricula,
+            concepto='Pensión'
+        ).values_list('numero_cuota', flat=True).distinct())
+        
+        max_cuota_pagada = max(pagos_pension) if pagos_pension else 0
+        periodo_actual = max_cuota_pagada + 1  # Si pagó 4 cuotas, está cursando el 5to período
+        
+        # Limitar el período actual al número máximo de pensiones del programa
+        max_periodos_programa = matricula.id_programa.numero_pensiones
+        periodo_actual = min(periodo_actual, max_periodos_programa)
+        
+        periodos = list(PeriodoAcademico.objects.filter(
+            numero_periodo__lte=periodo_actual,
+            activo=True
+        ).order_by('numero_periodo'))
+        
+        notas = list(Nota.objects.filter(id_matricula=matricula).order_by('-fecha_registro'))
+    
+    # Manejar nueva nota
+    if request.method == 'POST' and 'agregar_nota' in request.POST:
+        nota_form = NotaForm(request.POST)
+        if nota_form.is_valid():
+            nota = nota_form.save(commit=False)
+            nota.id_matricula = matricula
+            nota.id_usuario_registro = request.user.usuario
+            
+            # Verificar si el alumno puede recibir nota (está al día con pagos)
+            if nota.puede_recibir_nota:
+                nota.save()
+                messages.success(request, f'✅ Nota {nota.nota} registrada exitosamente para {nota.tipo_nota}.')
+            else:
+                messages.warning(request, '⚠️ El alumno debe estar al día con los pagos para recibir notas.')
+            
+            return redirect('gestion:gestionar_notas_matricula', matricula_id=matricula_id)
+        else:
+            messages.error(request, '❌ Error al registrar la nota. Por favor, verifica los datos.')
+    else:
+        nota_form = NotaForm()
+        # Filtrar períodos disponibles
+        nota_form.fields['id_periodo'].queryset = PeriodoAcademico.objects.filter(
+            numero_periodo__lte=periodo_actual,
+            activo=True
+        ).order_by('numero_periodo')
+    
+    # Estadísticas de notas
+    total_notas = len(notas)
+    if notas:
+        promedio_notas = sum(nota.nota for nota in notas) / total_notas
+        notas_aprobadas = sum(1 for nota in notas if nota.nota >= 14)
+        notas_desaprobadas = sum(1 for nota in notas if nota.nota < 14)
+    else:
+        promedio_notas = 0
+        notas_aprobadas = 0
+        notas_desaprobadas = 0
+    
+    context = {
+        'matricula': matricula,
+        'nota_form': nota_form,
+        'notas': notas,
+        'periodos': periodos,
+        'total_notas': total_notas,
+        'promedio_notas': round(promedio_notas, 2),
+        'notas_aprobadas': notas_aprobadas,
+        'notas_desaprobadas': notas_desaprobadas,
+    }
+    return render(request, 'gestion/gestionar_notas.html', context)
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@handle_cursor_errors
+def gestionar_asistencias_matricula(request, matricula_id):
+    """Vista para gestionar asistencias de una matrícula específica"""
+    matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
+    
+    try:
+        # Obtener períodos disponibles según los pagos de pensión realizados
+        pagos_pension = list(Pago.objects.filter(
+            id_matricula=matricula,
+            concepto='Pensión'
+        ).values_list('numero_cuota', flat=True).distinct())
+        
+        # Obtener períodos hasta el período actual (cuota pagada + 1)
+        max_cuota_pagada = max(pagos_pension) if pagos_pension else 0
+        periodo_actual = max_cuota_pagada + 1  # Si pagó 4 cuotas, está cursando el 5to período
+        
+        # Limitar el período actual al número máximo de pensiones del programa
+        max_periodos_programa = matricula.id_programa.numero_pensiones
+        periodo_actual = min(periodo_actual, max_periodos_programa)
+        
+        periodos = list(PeriodoAcademico.objects.filter(
+            numero_periodo__lte=periodo_actual,
+            activo=True
+        ).order_by('numero_periodo'))
+        
+        # Obtener asistencias existentes
+        asistencias = list(Asistencia.objects.filter(id_matricula=matricula).order_by('-fecha_clase'))
+        
+    except Exception as e:
+        # Si hay error de cursor, intentar con una nueva conexión
+        reset_db_connection()
+        
+        # Reintentar la consulta
+        pagos_pension = list(Pago.objects.filter(
+            id_matricula=matricula,
+            concepto='Pensión'
+        ).values_list('numero_cuota', flat=True).distinct())
+        
+        max_cuota_pagada = max(pagos_pension) if pagos_pension else 0
+        periodo_actual = max_cuota_pagada + 1  # Si pagó 4 cuotas, está cursando el 5to período
+        
+        # Limitar el período actual al número máximo de pensiones del programa
+        max_periodos_programa = matricula.id_programa.numero_pensiones
+        periodo_actual = min(periodo_actual, max_periodos_programa)
+        
+        periodos = list(PeriodoAcademico.objects.filter(
+            numero_periodo__lte=periodo_actual,
+            activo=True
+        ).order_by('numero_periodo'))
+        
+        asistencias = list(Asistencia.objects.filter(id_matricula=matricula).order_by('-fecha_clase'))
+    
+    # Manejar nueva asistencia
+    if request.method == 'POST' and 'agregar_asistencia' in request.POST:
+        asistencia_form = AsistenciaForm(request.POST)
+        if asistencia_form.is_valid():
+            asistencia = asistencia_form.save(commit=False)
+            asistencia.id_matricula = matricula
+            asistencia.id_usuario_registro = request.user.usuario
+            asistencia.save()
+            messages.success(request, f'✅ Asistencia registrada exitosamente para {asistencia.fecha_clase}.')
+            return redirect('gestion:gestionar_asistencias_matricula', matricula_id=matricula_id)
+        else:
+            messages.error(request, '❌ Error al registrar la asistencia. Por favor, verifica los datos.')
+    else:
+        asistencia_form = AsistenciaForm()
+        # Filtrar períodos disponibles
+        asistencia_form.fields['id_periodo'].queryset = PeriodoAcademico.objects.filter(
+            numero_periodo__lte=periodo_actual,
+            activo=True
+        ).order_by('numero_periodo')
+    
+    # Estadísticas de asistencia
+    total_clases = len(asistencias)
+    if asistencias:
+        clases_asistidas = sum(1 for asistencia in asistencias if asistencia.asistio)
+        clases_faltadas = sum(1 for asistencia in asistencias if not asistencia.asistio)
+        porcentaje_asistencia = (clases_asistidas / total_clases * 100) if total_clases > 0 else 0
+    else:
+        clases_asistidas = 0
+        clases_faltadas = 0
+        porcentaje_asistencia = 0
+    
+    context = {
+        'matricula': matricula,
+        'asistencia_form': asistencia_form,
+        'asistencias': asistencias,
+        'periodos': periodos,
+        'total_clases': total_clases,
+        'clases_asistidas': clases_asistidas,
+        'clases_faltadas': clases_faltadas,
+        'porcentaje_asistencia': round(porcentaje_asistencia, 1),
+    }
+    return render(request, 'gestion/gestionar_asistencias.html', context)
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN])
+def gestionar_periodos_academicos(request):
+    """Vista para gestionar períodos académicos (solo admin)"""
+    periodos = PeriodoAcademico.objects.all().order_by('-fecha_inicio')
+    
+    if request.method == 'POST' and 'crear_periodo' in request.POST:
+        periodo_form = PeriodoAcademicoForm(request.POST)
+        if periodo_form.is_valid():
+            periodo_form.save()
+            messages.success(request, '✅ Período académico creado exitosamente.')
+            return redirect('gestion:gestionar_periodos_academicos')
+        else:
+            messages.error(request, '❌ Error al crear el período. Por favor, verifica los datos.')
+    else:
+        periodo_form = PeriodoAcademicoForm()
+    
+    context = {
+        'periodos': periodos,
+        'periodo_form': periodo_form,
+    }
+    return render(request, 'gestion/gestionar_periodos_academicos.html', context)
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+def exportar_notas_csv(request, matricula_id):
+    """Exportar notas de una matrícula a CSV"""
+    matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
+    notas = matricula.notas.all()
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="notas_{matricula.id_cliente.id_lead.nombre_completo.replace(" ", "_")}.csv"'
+    response.write(u'\ufeff'.encode('utf8'))
+    writer = csv.writer(response)
+    
+    writer.writerow([
+        'Programa Académico', 'Nombre del Alumno', 'DNI', 'Período', 'Tipo de Nota', 'Nota', 'Estado', 'Observaciones', 'Fecha de Registro', 'Usuario'
+    ])
+    
+    for nota in notas:
+        writer.writerow([
+            matricula.id_programa.nombre_programa,
+            matricula.id_cliente.id_lead.nombre_completo,
+            matricula.id_cliente.dni,
+            nota.id_periodo.nombre_periodo,
+            nota.tipo_nota,
+            nota.nota,
+            nota.estado_nota,
+            nota.observaciones or '',
+            nota.fecha_registro.strftime('%Y-%m-%d %H:%M:%S'),
+            nota.id_usuario_registro.nombre_usuario,
+        ])
+    
+    return response
+
+@login_required
+@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+def exportar_asistencias_csv(request, matricula_id):
+    """Exportar asistencias de una matrícula a CSV"""
+    matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
+    asistencias = matricula.asistencias.all()
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="asistencias_{matricula.id_cliente.id_lead.nombre_completo.replace(" ", "_")}.csv"'
+    response.write(u'\ufeff'.encode('utf8'))
+    writer = csv.writer(response)
+    
+    writer.writerow([
+        'Período', 'Fecha de Clase', 'Asistió', 'Justificación', 'Fecha de Registro', 'Usuario'
+    ])
+    
+    for asistencia in asistencias:
+        writer.writerow([
+            asistencia.id_periodo.nombre_periodo,
+            asistencia.fecha_clase.strftime('%Y-%m-%d'),
+            'Sí' if asistencia.asistio else 'No',
+            asistencia.justificacion or '',
+            asistencia.fecha_registro.strftime('%Y-%m-%d %H:%M:%S'),
+            asistencia.id_usuario_registro.nombre_usuario,
+        ])
+    
+    return response
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('gestion:dashboard')
@@ -751,3 +1252,77 @@ def logout_view(request):
 @login_required
 def no_access_view(request):
     return render(request, 'gestion/no_access.html')
+
+# Helper decorator para superuser
+def superuser_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return HttpResponseForbidden('Acceso solo para superusuario.')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+# Modelos de catálogo
+CATALOG_MODELS = [
+    ('departamento', Departamento),
+    ('provincia', Provincia),
+    ('distrito', Distrito),
+    ('programa', ProgramaAcademico),
+    ('modalidad', Modalidad),
+    ('mediocontacto', MedioContacto),
+    ('mediopago', MedioPago),
+]
+
+# Listar
+@superuser_required
+def catalogo_list(request, modelo):
+    model = dict(CATALOG_MODELS).get(modelo)
+    if not model:
+        return HttpResponseForbidden('Catálogo no válido.')
+    objetos = model.objects.all()
+    return render(request, f'gestion/catalogos/list_{modelo}.html', {'objetos': objetos, 'modelo': modelo})
+
+# Crear
+@superuser_required
+def catalogo_create(request, modelo):
+    model = dict(CATALOG_MODELS).get(modelo)
+    if not model:
+        return HttpResponseForbidden('Catálogo no válido.')
+    Form = modelform_factory(model, exclude=())
+    if request.method == 'POST':
+        form = Form(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect(reverse('gestion:catalogo_list', args=[modelo]))
+    else:
+        form = Form()
+    return render(request, f'gestion/catalogos/form_{modelo}.html', {'form': form, 'modelo': modelo, 'accion': 'Crear'})
+
+# Editar
+@superuser_required
+def catalogo_edit(request, modelo, pk):
+    model = dict(CATALOG_MODELS).get(modelo)
+    if not model:
+        return HttpResponseForbidden('Catálogo no válido.')
+    obj = get_object_or_404(model, pk=pk)
+    Form = modelform_factory(model, exclude=())
+    if request.method == 'POST':
+        form = Form(request.POST, instance=obj)
+        if form.is_valid():
+            form.save()
+            return redirect(reverse('gestion:catalogo_list', args=[modelo]))
+    else:
+        form = Form(instance=obj)
+    return render(request, f'gestion/catalogos/form_{modelo}.html', {'form': form, 'modelo': modelo, 'accion': 'Editar'})
+
+# Eliminar
+@superuser_required
+def catalogo_delete(request, modelo, pk):
+    model = dict(CATALOG_MODELS).get(modelo)
+    if not model:
+        return HttpResponseForbidden('Catálogo no válido.')
+    obj = get_object_or_404(model, pk=pk)
+    if request.method == 'POST':
+        obj.delete()
+        return redirect(reverse('gestion:catalogo_list', args=[modelo]))
+    return render(request, f'gestion/catalogos/delete_{modelo}.html', {'obj': obj, 'modelo': modelo})

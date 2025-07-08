@@ -59,6 +59,13 @@
                         </li>
                         {% endif %}
 
+                        {# Períodos Académicos: Visible solo para Admin #}
+                        {% if request.user.usuario.rol == 'Admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'gestion:gestionar_periodos_academicos' %}">📅 Períodos Académicos</a>
+                        </li>
+                        {% endif %}
+
                         {# Menú Super Admin: Visible solo para Superuser #}
                         {% if request.user.is_superuser %}
                         <li class="nav-item dropdown">
@@ -105,6 +112,25 @@
             </div>
         </div>
     </nav>
+
+    {% if request.user.is_superuser %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Admin Catálogos</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'departamento' %}">Departamentos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'provincia' %}">Provincias</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'distrito' %}">Distritos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'programa' %}">Programas Académicos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'modalidad' %}">Modalidades</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'mediocontacto' %}">Medios de Contacto</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'mediopago' %}">Medios de Pago</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
 
     <main class="container mt-4">
         {% if messages %}

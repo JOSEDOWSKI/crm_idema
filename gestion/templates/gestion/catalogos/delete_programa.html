@@ -1,0 +1,10 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Eliminar Programa Académico{% endblock %}
+{% block content %}
+<h2>Eliminar Programa Académico</h2>
+<p>¿Estás seguro de que deseas eliminar el programa <strong>{{ obj }}</strong>?</p>
+<form method="post">{% csrf_token %}
+    <button type="submit" class="btn btn-danger">Eliminar</button>
+    <a href="{% url 'gestion:catalogo_list' 'programa' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %} 

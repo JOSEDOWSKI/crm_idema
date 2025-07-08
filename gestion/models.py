@@ -46,20 +46,41 @@ class MedioPago(models.Model):
 
 class ProgramaAcademico(models.Model):
     class TipoPrograma(models.TextChoices):
-        CARRERA_3_ANOS = 'Carrera 3 años', 'Carrera 3 años'
-        CARRERA_1_ANO = 'Carrera 1 año', 'Carrera 1 año'
-        CURSO_1_MES = 'Curso 1 mes', 'Curso 1 mes'
+        CURSO = 'Curso', 'Curso'
+        ESPECIALIZACION = 'Especialización', 'Especialización'
+        CARRERA_TECNICA = 'Carrera Técnica', 'Carrera Técnica'
 
     id_programa = models.AutoField(primary_key=True)
     nombre_programa = models.CharField(max_length=255)
-    tipo_programa = models.CharField(max_length=50, choices=TipoPrograma.choices)
+    tipo_programa = models.CharField(max_length=50, choices=TipoPrograma.choices, default=TipoPrograma.CURSO)
+    duracion_meses = models.IntegerField(default=1, verbose_name="Duración en meses")
+    numero_pensiones = models.IntegerField(default=1, verbose_name="Número de pensiones")
     precio_matricula = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     precio_pension_virtual = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     precio_pension_presencial = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     precio_curso_unico = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     def __str__(self):
-        return self.nombre_programa
+        return f"{self.nombre_programa} ({self.get_tipo_programa_display()})"
+
+    def save(self, *args, **kwargs):
+        # Calcular automáticamente el número de pensiones según el tipo de programa
+        if self.tipo_programa == self.TipoPrograma.CURSO:
+            self.duracion_meses = 1
+            self.numero_pensiones = 1
+        elif self.tipo_programa == self.TipoPrograma.ESPECIALIZACION:
+            self.duracion_meses = 10
+            self.numero_pensiones = 10
+        elif self.tipo_programa == self.TipoPrograma.CARRERA_TECNICA:
+            self.duracion_meses = 30
+            self.numero_pensiones = 30
+        
+        super().save(*args, **kwargs)
+
+    @property
+    def descripcion_completa(self):
+        """Retorna una descripción completa del programa"""
+        return f"{self.nombre_programa} - {self.get_tipo_programa_display()} ({self.duracion_meses} meses, {self.numero_pensiones} pensiones)"
 
 # ==============================================================
 # SECCIÓN 2: MODELOS GEOGRÁFICOS (UBIGEO)
@@ -116,6 +137,7 @@ class Lead(models.Model):
     id_medio_contacto = models.ForeignKey(MedioContacto, on_delete=models.PROTECT, db_column='id_medio_contacto')
     id_distrito = models.ForeignKey(Distrito, on_delete=models.PROTECT, db_column='id_distrito')
     intereses = models.ManyToManyField(ProgramaAcademico, through='LeadInteresPrograma')
+    observaciones = models.TextField(blank=True, null=True, verbose_name="Observaciones generales")
 
     def __str__(self):
         return self.nombre_completo
@@ -198,7 +220,160 @@ class Pago(models.Model):
     descuento_aplicado = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     id_matricula = models.ForeignKey(Matricula, on_delete=models.CASCADE, db_column='id_matricula')
     id_medio_pago = models.ForeignKey(MedioPago, on_delete=models.PROTECT, db_column='id_medio_pago')
+    archivo_comprobante = models.FileField(upload_to='comprobantes_pagos/', blank=True, null=True, verbose_name="Comprobante de pago (PDF o imagen)")
 
     def __str__(self):
         return f"Pago de {self.monto} por {self.concepto} para {self.id_matricula.id_cliente}"
+
+# ==============================================================
+# SECCIÓN 5: MODELOS DE OBSERVACIONES
+# ==============================================================
+
+class ObservacionLead(models.Model):
+    id_observacion = models.AutoField(primary_key=True)
+    id_lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name='observaciones_lead')
+    id_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, verbose_name="Usuario que registra")
+    fecha_observacion = models.DateTimeField(default=timezone.now, verbose_name="Fecha de observación")
+    observacion = models.TextField(verbose_name="Observación")
+
+    class Meta:
+        ordering = ['-fecha_observacion']
+        verbose_name = "Observación de Lead"
+        verbose_name_plural = "Observaciones de Leads"
+
+    def __str__(self):
+        return f"Observación de {self.id_usuario.nombre_usuario} el {self.fecha_observacion.strftime('%d/%m/%Y %H:%M')}"
+
+class ObservacionMatricula(models.Model):
+    id_observacion = models.AutoField(primary_key=True)
+    id_matricula = models.ForeignKey(Matricula, on_delete=models.CASCADE, related_name='observaciones_matricula')
+    id_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, verbose_name="Usuario que registra")
+    fecha_observacion = models.DateTimeField(default=timezone.now, verbose_name="Fecha de observación")
+    observacion = models.TextField(verbose_name="Observación")
+
+    class Meta:
+        ordering = ['-fecha_observacion']
+        verbose_name = "Observación de Matrícula"
+        verbose_name_plural = "Observaciones de Matrículas"
+
+    def __str__(self):
+        return f"Observación de {self.id_usuario.nombre_usuario} el {self.fecha_observacion.strftime('%d/%m/%Y %H:%M')}"
+
+# ==============================================================
+# SECCIÓN 6: MODELOS ACADÉMICOS (PERÍODOS Y NOTAS)
+# ==============================================================
+
+class PeriodoAcademico(models.Model):
+    id_periodo = models.AutoField(primary_key=True)
+    numero_periodo = models.IntegerField(unique=True, verbose_name="Número de Período", default=1)
+    nombre_periodo = models.CharField(max_length=100, verbose_name="Nombre del Período", default="Período")
+    activo = models.BooleanField(default=True, verbose_name="Período Activo")
+
+    class Meta:
+        ordering = ['numero_periodo']
+        verbose_name = "Período Académico"
+        verbose_name_plural = "Períodos Académicos"
+
+    def __str__(self):
+        return f"Período {self.numero_periodo}"
+
+    def save(self, *args, **kwargs):
+        # Auto-generar nombre si no se proporciona
+        if not self.nombre_periodo or self.nombre_periodo == "Período":
+            self.nombre_periodo = f"Período {self.numero_periodo}"
+        super().save(*args, **kwargs)
+
+class Nota(models.Model):
+    class TipoNota(models.TextChoices):
+        PRACTICA = 'Práctica', 'Práctica'
+        TEORICA = 'Teórica', 'Teórica'
+        FINAL = 'Final', 'Final'
+        RECUPERACION = 'Recuperación', 'Recuperación'
+
+    id_nota = models.AutoField(primary_key=True)
+    id_matricula = models.ForeignKey(Matricula, on_delete=models.CASCADE, related_name='notas', verbose_name="Matrícula")
+    id_periodo = models.ForeignKey(PeriodoAcademico, on_delete=models.CASCADE, verbose_name="Período Académico")
+    tipo_nota = models.CharField(max_length=20, choices=TipoNota.choices, default=TipoNota.FINAL)
+    nota = models.DecimalField(max_digits=4, decimal_places=2, verbose_name="Nota (0-20)")
+    observaciones = models.TextField(blank=True, null=True, verbose_name="Observaciones")
+    fecha_registro = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Registro")
+    id_usuario_registro = models.ForeignKey(Usuario, on_delete=models.CASCADE, verbose_name="Usuario que registra")
+
+    class Meta:
+        ordering = ['-fecha_registro']
+        verbose_name = "Nota"
+        verbose_name_plural = "Notas"
+        unique_together = ['id_matricula', 'id_periodo', 'tipo_nota']
+
+    def __str__(self):
+        return f"Nota {self.nota} - {self.tipo_nota} - {self.id_matricula.id_cliente.id_lead.nombre_completo}"
+
+    def clean(self):
+        """Validación personalizada para las notas"""
+        from django.core.exceptions import ValidationError
+        if self.nota < 0 or self.nota > 20:
+            raise ValidationError('La nota debe estar entre 0 y 20')
+
+    @property
+    def estado_nota(self):
+        """Determina el estado de la nota basado en el valor"""
+        if self.nota >= 14:
+            return "Aprobado"
+        elif self.nota >= 10:
+            return "Desaprobado"
+        else:
+            return "Muy Bajo"
+
+    @property
+    def puede_recibir_nota(self):
+        """Verifica si el alumno puede recibir nota (está al día con pagos)"""
+        # Obtener el número máximo de cuotas pagadas
+        max_cuota_pagada = Pago.objects.filter(
+            id_matricula=self.id_matricula,
+            concepto='Pensión'
+        ).aggregate(max_cuota=models.Max('numero_cuota'))['max_cuota'] or 0
+        
+        # El alumno puede recibir nota si el período es menor o igual al período actual (cuota pagada + 1)
+        periodo_actual = max_cuota_pagada + 1
+        
+        return self.id_periodo.numero_periodo <= periodo_actual
+
+class Asistencia(models.Model):
+    id_asistencia = models.AutoField(primary_key=True)
+    id_matricula = models.ForeignKey(Matricula, on_delete=models.CASCADE, related_name='asistencias', verbose_name="Matrícula")
+    id_periodo = models.ForeignKey(PeriodoAcademico, on_delete=models.CASCADE, verbose_name="Período Académico")
+    fecha_clase = models.DateField(verbose_name="Fecha de Clase")
+    asistio = models.BooleanField(default=True, verbose_name="Asistió")
+    justificacion = models.TextField(blank=True, null=True, verbose_name="Justificación")
+    fecha_registro = models.DateTimeField(default=timezone.now, verbose_name="Fecha de Registro")
+    id_usuario_registro = models.ForeignKey(Usuario, on_delete=models.CASCADE, verbose_name="Usuario que registra")
+
+    class Meta:
+        ordering = ['-fecha_clase']
+        verbose_name = "Asistencia"
+        verbose_name_plural = "Asistencias"
+        unique_together = ['id_matricula', 'id_periodo', 'fecha_clase']
+
+    def __str__(self):
+        estado = "Asistió" if self.asistio else "Faltó"
+        return f"{estado} - {self.id_matricula.id_cliente.id_lead.nombre_completo} - {self.fecha_clase}"
+
+    @property
+    def porcentaje_asistencia_periodo(self):
+        """Calcula el porcentaje de asistencia del alumno en el período"""
+        total_clases = Asistencia.objects.filter(
+            id_matricula=self.id_matricula,
+            id_periodo=self.id_periodo
+        ).count()
+        
+        clases_asistidas = Asistencia.objects.filter(
+            id_matricula=self.id_matricula,
+            id_periodo=self.id_periodo,
+            asistio=True
+        ).count()
+        
+        if total_clases == 0:
+            return 0
+        
+        return (clases_asistidas / total_clases) * 100
 

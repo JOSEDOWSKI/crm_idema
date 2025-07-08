@@ -15,6 +15,7 @@ from .models import (
     LeadInteresPrograma,
     Matricula,
     Pago,
+    ObservacionLead,
 )
 
 # Define un 'inline' para el modelo Usuario (nuestro perfil)
@@ -74,3 +75,4 @@ admin.site.register(Cliente, ClienteAdmin)
 admin.site.register(LeadInteresPrograma)
 admin.site.register(Matricula, MatriculaAdmin)
 admin.site.register(Pago, PagoAdmin)
+admin.site.register(ObservacionLead)

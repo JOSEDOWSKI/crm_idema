@@ -1,0 +1,10 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Eliminar Modalidad{% endblock %}
+{% block content %}
+<h2>Eliminar Modalidad</h2>
+<p>¿Estás seguro de que deseas eliminar la modalidad <strong>{{ obj }}</strong>?</p>
+<form method="post">{% csrf_token %}
+    <button type="submit" class="btn btn-danger">Eliminar</button>
+    <a href="{% url 'gestion:catalogo_list' 'modalidad' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %} 

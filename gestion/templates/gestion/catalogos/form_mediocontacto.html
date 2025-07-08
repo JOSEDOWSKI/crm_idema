@@ -1,0 +1,10 @@
+{% extends 'gestion/base.html' %}
+{% block title %}{{ accion }} Medio de Contacto{% endblock %}
+{% block content %}
+<h2>{{ accion }} Medio de Contacto</h2>
+<form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{% url 'gestion:catalogo_list' 'mediocontacto' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %} 

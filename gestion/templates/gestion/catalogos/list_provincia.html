@@ -1,0 +1,24 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Provincias{% endblock %}
+{% block content %}
+<h2>Provincias</h2>
+<a href="{% url 'gestion:catalogo_create' 'provincia' %}" class="btn btn-success mb-2">Crear Provincia</a>
+<table class="table table-striped">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Departamento</th><th>Acciones</th></tr></thead>
+    <tbody>
+    {% for obj in objetos %}
+        <tr>
+            <td>{{ obj.id_provincia }}</td>
+            <td>{{ obj.nombre }}</td>
+            <td>{{ obj.id_departamento.nombre }}</td>
+            <td>
+                <a href="{% url 'gestion:catalogo_edit' 'provincia' obj.id_provincia %}" class="btn btn-warning btn-sm">Editar</a>
+                <a href="{% url 'gestion:catalogo_delete' 'provincia' obj.id_provincia %}" class="btn btn-danger btn-sm">Eliminar</a>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">No hay provincias.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 

@@ -3,78 +3,223 @@
 {% block title %}Detalle de Matrícula{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-7">
-        <h2>Detalle de Matrícula</h2>
-        <div class="card">
-            <div class="card-header">
-                <strong>Estudiante:</strong> {{ matricula.id_cliente.id_lead.nombre_completo }}
-            </div>
-            <div class="card-body">
-                <h5 class="card-title">Información del Alumno</h5>
-                <p><strong>Nombre:</strong> {{ matricula.id_cliente.id_lead.nombre_completo }}</p>
-                <p><strong>DNI:</strong> {{ matricula.id_cliente.dni }}</p>
-                <p><strong>Email:</strong> {{ matricula.id_cliente.email }}</p>
-                <p><strong>Programa:</strong> {{ matricula.id_programa.nombre_programa }}</p>
-                <p><strong>Modalidad:</strong> {{ matricula.id_modalidad.nombre_modalidad }}</p>
-                <p><strong>Estado:</strong> {{ matricula.get_estado_display }}</p>
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📋 Detalle de Matrícula</h2>
+        <div>
+            <a href="{% url 'gestion:listar_matriculas' %}" class="btn btn-secondary">
+                ← Volver a Matrículas
+            </a>
+            <a href="{% url 'gestion:editar_cliente' matricula.id_cliente.id_cliente %}" class="btn btn-primary">
+                ✏️ Editar Información
+            </a>
+        </div>
+    </div>
 
-                <h6 class="mt-4">Documentos Adjuntos</h6>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Documento de Identidad (DNI):
-                        {% if matricula.id_cliente.archivo_dni %}
-                            <a href="{{ matricula.id_cliente.archivo_dni.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver Archivo</a>
-                        {% else %}
-                            <span class="badge badge-secondary">No adjuntado</span>
-                        {% endif %}
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Partida de Nacimiento:
-                        {% if matricula.id_cliente.archivo_partida %}
-                            <a href="{{ matricula.id_cliente.archivo_partida.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver Archivo</a>
-                        {% else %}
-                            <span class="badge badge-secondary">No adjuntado</span>
-                        {% endif %}
-                    </li>
-                </ul>
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Información del Alumno -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">👤 Información del Alumno</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Nombre:</strong> {{ matricula.id_cliente.id_lead.nombre_completo }}</p>
+                            <p><strong>DNI:</strong> {{ matricula.id_cliente.dni }}</p>
+                            <p><strong>Email:</strong> {{ matricula.id_cliente.email }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Programa:</strong> {{ matricula.id_programa.nombre_programa }}</p>
+                            <p><strong>Modalidad:</strong> {{ matricula.id_modalidad.nombre_modalidad }}</p>
+                            <p><strong>Estado:</strong> 
+                                <span class="badge {% if matricula.estado == 'Activo' %}bg-success{% elif matricula.estado == 'Retirado' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    {{ matricula.get_estado_display }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <h6 class="mt-4">📎 Documentos Adjuntos</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>Documento de Identidad (DNI):</span>
+                                {% if matricula.id_cliente.archivo_dni %}
+                                    <a href="{{ matricula.id_cliente.archivo_dni.url }}" target="_blank" class="btn btn-sm btn-outline-primary">📄 Ver Archivo</a>
+                                {% else %}
+                                    <span class="badge bg-secondary">No adjuntado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>Partida de Nacimiento:</span>
+                                {% if matricula.id_cliente.archivo_partida %}
+                                    <a href="{{ matricula.id_cliente.archivo_partida.url }}" target="_blank" class="btn btn-sm btn-outline-primary">📄 Ver Archivo</a>
+                                {% else %}
+                                    <span class="badge bg-secondary">No adjuntado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Funcionalidades Académicas -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🎓 Gestión Académica</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">📊 Notas</h6>
+                                    <p class="card-text">Gestionar calificaciones del alumno</p>
+                                    <a href="{% url 'gestion:gestionar_notas_matricula' matricula.id_matricula %}" class="btn btn-primary">
+                                        📝 Gestionar Notas
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">📅 Asistencias</h6>
+                                    <p class="card-text">Control de asistencia a clases</p>
+                                    <a href="{% url 'gestion:gestionar_asistencias_matricula' matricula.id_matricula %}" class="btn btn-success">
+                                        ✅ Gestionar Asistencias
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historial de Pagos -->
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">💰 Historial de Pagos</h5>
+                </div>
+                <div class="card-body">
+                    {% if pagos %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Concepto</th>
+                                    <th>Monto</th>
+                                    <th>Medio de Pago</th>
+                                    <th>Cuota</th>
+                                    <th>Comprobante</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pago in pagos %}
+                                <tr>
+                                    <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+                                    <td>
+                                        <span class="badge {% if pago.concepto == 'Matrícula' %}bg-primary{% elif pago.concepto == 'Pensión' %}bg-success{% else %}bg-info{% endif %}">
+                                            {{ pago.get_concepto_display }}
+                                        </span>
+                                    </td>
+                                    <td><strong>S/ {{ pago.monto }}</strong></td>
+                                    <td>{{ pago.id_medio_pago.nombre_medio }}</td>
+                                    <td>
+                                        {% if pago.numero_cuota %}
+                                        <span class="badge bg-secondary">Cuota {{ pago.numero_cuota }}</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if pago.archivo_comprobante %}
+                                            <a href="{{ pago.archivo_comprobante.url }}" target="_blank" class="btn btn-sm btn-outline-info">📎 Ver</a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted">
+                        <h6>No se han registrado pagos</h6>
+                        <p>Registra el primer pago usando el formulario de la derecha</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
 
-        <h3 class="mt-4">Historial de Pagos</h3>
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Concepto</th>
-                    <th>Monto</th>
-                    <th>Medio</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for pago in pagos %}
-                <tr>
-                    <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
-                    <td>{{ pago.get_concepto_display }}</td>
-                    <td>S/ {{ pago.monto }}</td>
-                    <td>{{ pago.id_medio_pago.nombre_medio }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center">No se han registrado pagos.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        <div class="col-md-4">
+            <!-- Formulario de Pago -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">💳 Registrar Nuevo Pago</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.errors %}
+                            <div class="text-danger">
+                                {{ field.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-success w-100">
+                            💾 Guardar Pago
+                        </button>
+                    </form>
+                </div>
+            </div>
 
-    <div class="col-md-5">
-        <h2>Registrar Nuevo Pago</h2>
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="btn btn-primary">Guardar Pago</button>
-        </form>
+            <!-- Información Adicional -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">ℹ️ Información</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Fecha de Inscripción:</strong><br>
+                    <small class="text-muted">{{ matricula.fecha_inscripcion|date:"d/m/Y H:i" }}</small></p>
+                    
+                    <p><strong>Usuario de Inscripción:</strong><br>
+                    <small class="text-muted">{{ matricula.id_usuario_inscripcion.nombre_usuario }}</small></p>
+                    
+                    {% if matricula.observacion %}
+                    <p><strong>Observaciones:</strong><br>
+                    <small class="text-muted">{{ matricula.observacion }}</small></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<style>
+.card-header h5 {
+    margin-bottom: 0;
+}
+.badge {
+    font-size: 0.8em;
+}
+.table th {
+    font-size: 0.9em;
+}
+.table td {
+    font-size: 0.9em;
+}
+</style>
 {% endblock %} 

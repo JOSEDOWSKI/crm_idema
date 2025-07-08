@@ -1,0 +1,156 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Gestionar Períodos Académicos{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📅 Gestionar Períodos Académicos</h2>
+        <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+            ← Volver al Dashboard
+        </a>
+    </div>
+    
+    <!-- Formulario para Crear Período -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">➕ Crear Nuevo Período Académico</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            {{ periodo_form.numero_periodo.label_tag }}
+                            {{ periodo_form.numero_periodo }}
+                            {% if periodo_form.numero_periodo.errors %}
+                            <div class="text-danger">{{ periodo_form.numero_periodo.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            {{ periodo_form.nombre_periodo.label_tag }}
+                            {{ periodo_form.nombre_periodo }}
+                            {% if periodo_form.nombre_periodo.errors %}
+                            <div class="text-danger">{{ periodo_form.nombre_periodo.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <div class="form-check mt-4">
+                                {{ periodo_form.activo }}
+                                <label class="form-check-label" for="{{ periodo_form.activo.id_for_label }}">
+                                    {{ periodo_form.activo.label }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <button type="submit" name="crear_periodo" class="btn btn-success">
+                            💾 Crear Período Académico
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Períodos Académicos -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">📋 Períodos Académicos Registrados</h5>
+        </div>
+        <div class="card-body">
+            {% if periodos %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Número</th>
+                            <th>Nombre</th>
+                            <th>Activo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for periodo in periodos %}
+                        <tr>
+                            <td>
+                                <strong>{{ periodo.numero_periodo }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ periodo.nombre_periodo }}</span>
+                            </td>
+                            <td>
+                                {% if periodo.activo %}
+                                <span class="badge bg-success">✅ Sí</span>
+                                {% else %}
+                                <span class="badge bg-danger">❌ No</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted">
+                <h5>📅 No hay períodos académicos registrados</h5>
+                <p>¡Crea el primer período académico para comenzar!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Información Adicional -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">ℹ️ Información sobre Períodos Académicos</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>📚 Sistema de Períodos:</h6>
+                    <ul>
+                        <li><strong>Números secuenciales:</strong> 1, 2, 3, 4, etc.</li>
+                        <li><strong>Vinculación con pagos:</strong> Solo se pueden elegir períodos hasta el número de pensiones pagadas</li>
+                        <li><strong>Control automático:</strong> El sistema verifica los pagos antes de permitir notas</li>
+                        <li><strong>Flexibilidad:</strong> Puedes crear períodos con nombres personalizados</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>💡 Recomendaciones:</h6>
+                    <ul>
+                        <li>Crear períodos secuenciales: 1, 2, 3, 4, 5...</li>
+                        <li>Los períodos deben estar activos para registrar notas</li>
+                        <li>Un alumno solo puede recibir notas hasta el período de su última pensión pagada</li>
+                        <li>El sistema controla automáticamente el acceso según los pagos</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card-header h5 {
+    margin-bottom: 0;
+}
+.badge {
+    font-size: 0.8em;
+}
+.table th {
+    font-size: 0.9em;
+}
+.table td {
+    font-size: 0.9em;
+}
+.form-check-input {
+    margin-top: 0.2rem;
+}
+</style>
+{% endblock %} 

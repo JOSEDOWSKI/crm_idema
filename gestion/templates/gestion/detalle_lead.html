@@ -1,6 +1,31 @@
 {% extends "gestion/base.html" %}
 
 {% block content %}
+<style>
+    .border-left-primary {
+        border-left: 4px solid #007bff !important;
+    }
+    .observacion-content {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        border-left: 3px solid #007bff;
+    }
+    .observacion-content p:last-child {
+        margin-bottom: 0;
+    }
+    .text-primary {
+        color: #007bff !important;
+    }
+    .card.mb-3 {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: box-shadow 0.3s ease;
+    }
+    .card.mb-3:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+</style>
+
 <div class="container mt-4">
     <div class="row">
         <!-- Columna de Detalles del Lead -->
@@ -14,9 +39,9 @@
                     <p class="card-text"><strong>Email:</strong> {{ lead.email }}</p>
                     <p class="card-text"><strong>Teléfono:</strong> {{ lead.telefono }}</p>
                     <p class="card-text"><strong>Estado:</strong> <span class="badge bg-info text-dark">{{ lead.get_estado_lead_display }}</span></p>
-                    <p class="card-text"><strong>Asesor Asignado:</strong> {{ lead.id_usuario.nombre_usuario }}</p>
-                    <p class="card-text"><strong>Fecha de Creación:</strong> {{ lead.fecha_creacion|date:"d/m/Y" }}</p>
-                     <p class="card-text"><strong>Programas de Interés:</strong>
+                    <p class="card-text"><strong>Asesor Asignado:</strong> {{ lead.id_usuario_atencion.nombre_usuario }}</p>
+                    <p class="card-text"><strong>Fecha de Ingreso:</strong> {{ lead.fecha_ingreso|date:"d/m/Y" }}</p>
+                    <p class="card-text"><strong>Programas de Interés:</strong>
                         <ul>
                         {% for interes in lead.leadinteresprograma_set.all %}
                             <li>{{ interes.id_programa.nombre_programa }}</li>
@@ -25,6 +50,11 @@
                         {% endfor %}
                         </ul>
                     </p>
+                    {% if lead.observaciones %}
+                    <p class="card-text"><strong>Observaciones Generales:</strong><br>
+                        {{ lead.observaciones|linebreaks }}
+                    </p>
+                    {% endif %}
                 </div>
                 <div class="card-footer">
                      <a href="{% url 'gestion:listar_leads' %}" class="btn btn-secondary">Volver a la Lista</a>
@@ -32,41 +62,119 @@
             </div>
         </div>
 
-        <!-- Columna de Interacciones -->
+        <!-- Columna de Observaciones -->
         <div class="col-md-7">
-            <!-- Formulario para Nueva Interacción -->
+            <!-- Información del Sistema -->
+            <div class="alert alert-info mb-4">
+                <h5 class="alert-heading">ℹ️ ¿Cómo funciona el sistema de observaciones?</h5>
+                <ul class="mb-0">
+                    <li><strong>Historial Completo:</strong> Todas las observaciones se mantienen para siempre</li>
+                    <li><strong>Usuario y Fecha:</strong> Cada observación registra quién la hizo y cuándo</li>
+                    <li><strong>Orden Cronológico:</strong> Las más recientes aparecen primero</li>
+                    <li><strong>Exportación:</strong> Puedes descargar todo el historial en CSV</li>
+                </ul>
+            </div>
+
+            <!-- Estadísticas de Observaciones -->
+            {% if total_observaciones > 0 %}
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📊 Estadísticas de Observaciones</h5>
+                    <a href="{% url 'gestion:exportar_observaciones_csv' lead.id_lead %}" class="btn btn-sm btn-outline-success">
+                        📄 Exportar Historial
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ total_observaciones }}</h4>
+                                <small class="text-muted">Total Observaciones</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-success">{{ observaciones_por_usuario|length }}</h4>
+                                <small class="text-muted">Usuarios Activos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-info">{{ ultima_observacion.fecha_observacion|timesince }}</h4>
+                                <small class="text-muted">Última Observación</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% if observaciones_por_usuario %}
+                    <hr>
+                    <div class="mt-2">
+                        <small class="text-muted">Observaciones por usuario:</small>
+                        {% for usuario, cantidad in observaciones_por_usuario.items %}
+                            <span class="badge bg-secondary me-1">{{ usuario }}: {{ cantidad }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Formulario para Nueva Observación -->
             <div class="card mb-4">
                  <div class="card-header">
-                    <h4>Registrar Nueva Interacción</h4>
+                    <h4>➕ Agregar Nueva Observación</h4>
                 </div>
                 <div class="card-body">
                     <form method="post">
                         {% csrf_token %}
-                        {{ form.as_p }}
-                        <button type="submit" class="btn btn-primary">Guardar Interacción</button>
+                        <div class="mb-3">
+                            <label for="{{ observacion_form.observacion.id_for_label }}" class="form-label">
+                                <strong>Nueva Observación:</strong>
+                            </label>
+                            {{ observacion_form.observacion }}
+                            <div class="form-text">
+                                Esta observación será guardada con tu nombre y la fecha actual.
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button type="submit" name="agregar_observacion" class="btn btn-primary btn-lg">
+                                💾 Guardar Observación
+                            </button>
+                            <small class="text-muted">
+                                Usuario: <strong>{{ request.user.usuario.nombre_usuario }}</strong>
+                            </small>
+                        </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Historial de Interacciones -->
+            <!-- Historial de Observaciones -->
             <div class="card">
                 <div class="card-header">
-                    <h4>Historial de Interacciones</h4>
+                    <h4>📋 Historial Completo de Observaciones ({{ observaciones.count }} observaciones)</h4>
+                    <small class="text-muted">Todas las observaciones se mantienen en el historial. Las más recientes aparecen primero.</small>
                 </div>
                 <div class="card-body">
-                    {% for interaccion in interacciones %}
-                        <div class="card mb-2">
+                    {% for observacion in observaciones %}
+                        <div class="card mb-3 border-left-primary">
                             <div class="card-body">
-                                <p class="card-text">
-                                    <strong>Tipo:</strong> {{ interaccion.get_tipo_interaccion_display }}<br>
-                                    <strong>Fecha:</strong> {{ interaccion.fecha_interaccion|date:"d/m/Y H:i" }}<br>
-                                    <strong>Asesor:</strong> {{ interaccion.id_usuario.nombre_usuario }}<br>
-                                    <strong>Resultado:</strong> {{ interaccion.resultado|linebreaks }}
-                                </p>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <strong class="text-primary">👤 {{ observacion.id_usuario.nombre_usuario }}</strong>
+                                        <small class="text-muted ms-2">📅 {{ observacion.fecha_observacion|date:"d/m/Y H:i" }}</small>
+                                    </div>
+                                    <span class="badge bg-light text-dark">#{{ forloop.revcounter }}</span>
+                                </div>
+                                <div class="observacion-content">
+                                    {{ observacion.observacion|linebreaks }}
+                                </div>
                             </div>
                         </div>
                     {% empty %}
-                        <p>No hay interacciones registradas.</p>
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-comments fa-3x mb-3"></i>
+                            <p>No hay observaciones registradas.</p>
+                            <p class="small">Sé el primero en agregar una observación sobre este lead.</p>
+                        </div>
                     {% endfor %}
                 </div>
             </div>
