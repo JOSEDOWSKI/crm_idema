@@ -8,24 +8,27 @@ from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
-from .decorators import rol_requerido
+from .decorators import rol_requerido, rol_profesor_required, rol_estudiante_required, require_permiso_personalizado
 import json
 import random
 import csv
 from datetime import timedelta
-from .forms import LeadForm, ConvertirLeadForm, PagoForm, ClienteEditForm, LeadEditForm, InteraccionForm, ObservacionLeadForm, MatriculaEditForm, ObservacionMatriculaForm, PeriodoAcademicoForm, NotaForm, AsistenciaForm
+from .forms import LeadForm, ConvertirLeadForm, PagoForm, ClienteEditForm, LeadEditForm, InteraccionForm, ObservacionLeadForm, MatriculaEditForm, ObservacionMatriculaForm, NotaForm, AsistenciaForm, EmpleadoForm, EmpleadoConAccesoForm, DocumentoForm
 from .models import (
     Lead, LeadInteresPrograma, Cliente, Matricula, Pago, Usuario,
     MedioContacto, Modalidad, MedioPago, ProgramaAcademico,
     Departamento, Provincia, Distrito, ObservacionLead, ObservacionMatricula,
-    PeriodoAcademico, Nota, Asistencia
+    Nota, Asistencia, Empleado, Documento,
+    Curso, PeriodoCurso,
+    Ingreso, Gasto, Sede, RolEmpleado, PermisoPersonalizado
 )
 from django.forms import modelform_factory
 from django.urls import reverse
 from functools import wraps
+from django import forms
 
 def reset_db_connection():
     """Reset database connection to handle cursor errors"""
@@ -51,7 +54,7 @@ def handle_cursor_errors(func):
 # Create your views here.
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@require_permiso_personalizado('leads')
 def listar_leads(request):
     # Parámetros de búsqueda y filtros
     search_query = request.GET.get('search', '')
@@ -138,7 +141,7 @@ def listar_leads(request):
     return render(request, 'gestion/listar_leads.html', context)
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 def detalle_lead(request, lead_id):
     lead = get_object_or_404(Lead, id_lead=lead_id)
     
@@ -183,7 +186,7 @@ def detalle_lead(request, lead_id):
     return render(request, 'gestion/detalle_lead.html', context)
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@require_permiso_personalizado('matriculas')
 def listar_matriculas(request):
     # Parámetros de búsqueda y filtros
     search_query = request.GET.get('search', '')
@@ -226,7 +229,7 @@ def listar_matriculas(request):
     return render(request, 'gestion/listar_matriculas.html', context)
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 def detalle_matricula(request, matricula_id):
     matricula = get_object_or_404(
         Matricula.objects.select_related('id_cliente__id_lead', 'id_programa'),
@@ -252,7 +255,7 @@ def detalle_matricula(request, matricula_id):
     return render(request, 'gestion/detalle_matricula.html', context)
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin'])
 @transaction.atomic
 def editar_cliente(request, cliente_id):
     cliente = get_object_or_404(Cliente, id_cliente=cliente_id)
@@ -333,8 +336,7 @@ def editar_cliente(request, cliente_id):
     return render(request, 'gestion/editar_cliente.html', context)
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN])
-@transaction.atomic
+@require_permiso_personalizado('poblar_bd')
 def poblar_bd_ejemplo(request):
     with connection.cursor() as cursor:
         # Borrar datos
@@ -363,7 +365,7 @@ def poblar_bd_ejemplo(request):
     return redirect('gestion:dashboard')
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 @transaction.atomic
 def convertir_lead_a_cliente(request, lead_id):
     lead = get_object_or_404(Lead, id_lead=lead_id)
@@ -375,29 +377,77 @@ def convertir_lead_a_cliente(request, lead_id):
     if request.method == 'POST':
         form = ConvertirLeadForm(request.POST, request.FILES)
         if form.is_valid():
-            # Crear Cliente
-            cliente = Cliente.objects.create(
-                id_lead=lead,
-                dni=form.cleaned_data['dni'],
-                email=form.cleaned_data['email'],
-                archivo_dni=form.cleaned_data.get('archivo_dni'),
-                archivo_partida=form.cleaned_data.get('archivo_partida')
-            )
+            sede = form.cleaned_data['sede']
+            programa = form.cleaned_data['programa']
+            # Validar que el programa pertenezca a la sede seleccionada
+            if programa.sede != sede:
+                form.add_error('programa', 'El programa seleccionado no pertenece a la sede elegida.')
+            else:
+                # Crear Cliente
+                cliente = Cliente.objects.create(
+                    id_lead=lead,
+                    dni=form.cleaned_data['dni'],
+                    email=form.cleaned_data['email'],
+                    archivo_dni=form.cleaned_data.get('archivo_dni'),
+                    archivo_partida=form.cleaned_data.get('archivo_partida')
+                )
 
-            # Crear Matrícula
-            Matricula.objects.create(
-                id_cliente=cliente,
-                id_programa=form.cleaned_data['programa'],
-                id_modalidad=form.cleaned_data['modalidad'],
-                observacion=form.cleaned_data['observacion'],
-                id_usuario_inscripcion=lead.id_usuario_atencion 
-            )
+                # Crear usuario Django y Usuario del sistema automáticamente para el alumno
+                dni = form.cleaned_data['dni']
+                nombres = lead.nombre_completo.split(' ')[0] if lead.nombre_completo else 'Alumno'
+                apellidos = ' '.join(lead.nombre_completo.split(' ')[1:]) if lead.nombre_completo and len(lead.nombre_completo.split(' ')) > 1 else 'Sin Apellido'
+                email = form.cleaned_data['email']
+                
+                # Verificar si ya existe un usuario Django con ese username
+                user, created = User.objects.get_or_create(
+                    username=dni,
+                    defaults={'first_name': nombres, 'last_name': apellidos, 'email': email}
+                )
+                if created:
+                    user.set_password(dni)
+                    user.save()
+                
+                # Asignar rol 'Estudiante' o crear uno si no existe
+                rol = RolEmpleado.objects.filter(nombre__iexact='Estudiante').first()
+                if not rol:
+                    rol = RolEmpleado.objects.create(nombre='Estudiante', descripcion='Rol para alumnos matriculados')
+                
+                # Crear o actualizar el objeto Usuario
+                usuario = Usuario.objects.filter(user_django=user).first()
+                if not usuario:
+                    usuario = Usuario.objects.create(
+                        user_django=user,
+                        nombre_usuario=f"{nombres} {apellidos}",
+                        rol=rol
+                    )
+                elif not usuario.rol:
+                    usuario.rol = rol
+                    usuario.save()
 
-            # Actualizar estado del Lead
-            lead.estado_lead = 'Convertido'
-            lead.save()
+                # Crear Matrícula
+                Matricula.objects.create(
+                    id_cliente=cliente,
+                    id_programa=programa,
+                    id_modalidad=form.cleaned_data['modalidad'],
+                    observacion=form.cleaned_data['observacion'],
+                    id_usuario_inscripcion=lead.id_usuario_atencion 
+                )
 
-            return redirect('gestion:listar_leads')
+                # Actualizar estado del Lead
+                lead.estado_lead = 'Convertido'
+                lead.save()
+
+                return redirect('gestion:listar_leads')
+        # Si hay error, filtrar los programas según la sede seleccionada
+        else:
+            sede = form.data.get('sede')
+            if sede:
+                from gestion.models import Sede, ProgramaAcademico
+                try:
+                    sede_obj = Sede.objects.get(pk=sede)
+                    form.fields['programa'].queryset = ProgramaAcademico.objects.filter(sede=sede_obj)
+                except Sede.DoesNotExist:
+                    form.fields['programa'].queryset = ProgramaAcademico.objects.none()
     else:
         # Pasa los intereses del lead al formulario
         programas_interes = lead.intereses.all()
@@ -406,7 +456,7 @@ def convertir_lead_a_cliente(request, lead_id):
     return render(request, 'gestion/convertir_lead.html', {'form': form, 'lead': lead})
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@require_permiso_personalizado('crear_lead')
 def crear_lead(request):
     if request.method == 'POST':
         form = LeadForm(request.POST)
@@ -428,260 +478,7 @@ def crear_lead(request):
     return render(request, 'gestion/crear_lead.html', {'form': form})
 
 @login_required
-def dashboard(request):
-    if request.user.usuario.rol == Usuario.Roles.VENTAS:
-        return redirect('gestion:listar_leads')
-    
-    context = {}
-    rol_usuario = request.user.usuario.rol
-    context['rol_usuario'] = rol_usuario
-    context['Roles'] = Usuario.Roles
-    
-    # Dashboard especial para Superadmin (ahora tiene su propia URL)
-    # if request.user.is_superuser:
-    #     return superadmin_dashboard(request)
-    
-    with connection.cursor() as cursor:
-        if rol_usuario in [Usuario.Roles.ADMIN, Usuario.Roles.ANALISTA]:
-            cursor.execute("SELECT COUNT(*) FROM gestion_cliente;")
-            total_alumnos = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM gestion_lead;")
-            total_leads = cursor.fetchone()[0]
-            now = timezone.now()
-            cursor.execute("SELECT COUNT(*) FROM gestion_lead WHERE EXTRACT(YEAR FROM fecha_ingreso) = %s AND EXTRACT(MONTH FROM fecha_ingreso) = %s;", [now.year, now.month])
-            leads_este_mes = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM gestion_cliente c JOIN gestion_matricula m ON c.id_cliente = m.id_cliente WHERE EXTRACT(YEAR FROM m.fecha_inscripcion) = %s AND EXTRACT(MONTH FROM m.fecha_inscripcion) = %s;", [now.year, now.month])
-            clientes_este_mes = cursor.fetchone()[0]
-            context.update({
-                'total_alumnos': total_alumnos,
-                'total_leads': total_leads,
-                'leads_este_mes': leads_este_mes,
-                'clientes_este_mes': clientes_este_mes,
-            })
-        if rol_usuario == Usuario.Roles.ADMIN:
-            cursor.execute("SELECT COUNT(*) FROM gestion_matricula;")
-            total_matriculas = cursor.fetchone()[0]
-            cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM gestion_pago;")
-            monto_recaudado = cursor.fetchone()[0]
-            total_leads = context.get('total_leads', 0)
-            tasa_conversion = (context.get('total_alumnos', 0) / total_leads) * 100 if total_leads > 0 else 0
-            if total_matriculas > 0:
-                cursor.execute("SELECT COUNT(*) FROM gestion_matricula WHERE estado = 'Activo';")
-                activos = cursor.fetchone()[0]
-                tasa_retencion = (activos / total_matriculas) * 100
-            else:
-                tasa_retencion = 0
-            context.update({
-                'monto_recaudado': monto_recaudado,
-                'tasa_conversion': tasa_conversion,
-                'tasa_retencion': tasa_retencion,
-            })
-        # Puedes agregar más KPIs usando SQL puro aquí
-    return render(request, 'gestion/dashboard.html', context)
-
-@require_POST
-@login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
-def actualizar_estado_lead(request, lead_id):
-    try:
-        lead = get_object_or_404(Lead, pk=lead_id)
-        data = json.loads(request.body)
-        nuevo_estado = data.get('estado')
-
-        # Obtiene los estados válidos desde el modelo
-        estados_validos = [choice[0] for choice in lead.ESTADO_LEAD_CHOICES]
-
-        if nuevo_estado in estados_validos:
-            # Prevenir cambiar a 'Convertido' desde aquí
-            if nuevo_estado == 'Convertido':
-                 return JsonResponse({'status': 'error', 'message': 'La conversión se hace desde el botón "Convertir".'}, status=400)
-            
-            lead.estado_lead = nuevo_estado
-            lead.save()
-            return JsonResponse({'status': 'ok', 'nuevo_estado': nuevo_estado})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Estado no válido.'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@csrf_exempt
-@require_POST
-def api_crear_lead(request):
-    try:
-        data = json.loads(request.body)
-        
-        # Validación básica de datos
-        nombre = data.get('nombre_completo')
-        telefono = data.get('telefono')
-        
-        if not nombre or not telefono:
-            return JsonResponse({'status': 'error', 'message': 'Nombre y teléfono son requeridos.'}, status=400)
-
-        # Asignar a un asesor por defecto o de forma aleatoria (se puede mejorar)
-        asesor_default = Usuario.objects.filter(rol='Asesor').first()
-        if not asesor_default:
-             return JsonResponse({'status': 'error', 'message': 'No hay asesores disponibles.'}, status=500)
-
-        # Asignar un medio de contacto por defecto para la API
-        medio_contacto, _ = MedioContacto.objects.get_or_create(nombre_medio='Formulario Web')
-        distrito_default = Distrito.objects.first() # Simplificación, se puede mejorar
-        if not distrito_default:
-            return JsonResponse({'status': 'error', 'message': 'No hay distritos configurados.'}, status=500)
-
-        lead = Lead.objects.create(
-            nombre_completo=nombre,
-            telefono=telefono,
-            email=data.get('email', ''), # Opcional
-            genero=data.get('genero', 'Otro'),
-            estado_lead='Pendiente',
-            id_usuario_atencion=asesor_default,
-            id_medio_contacto=medio_contacto,
-            id_distrito=distrito_default
-        )
-        
-        # Manejar intereses si se envían
-        intereses_ids = data.get('intereses', [])
-        if intereses_ids:
-            programas = ProgramaAcademico.objects.filter(id_programa__in=intereses_ids)
-            lead.intereses.set(programas)
-
-        return JsonResponse({'status': 'ok', 'message': 'Lead creado con éxito.', 'lead_id': lead.id_lead})
-
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Error en el formato de los datos (JSON inválido).'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': f'Error interno del servidor: {str(e)}'}, status=500)
-
-@login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.ANALISTA])
-def consulta_sql(request):
-    query = request.POST.get('query', '')
-    results = None
-    columns = None
-    error = None
-    message = None
-
-    if request.method == 'POST' and query:
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute(query)
-
-                # Si es una consulta que devuelve filas (ej. SELECT)
-                if cursor.description:
-                    columns = [col[0] for col in cursor.description]
-                    results = cursor.fetchall()
-
-                    # --- Lógica de descarga CSV ---
-                    if 'download' in request.POST:
-                        response = HttpResponse(content_type='text/csv')
-                        # Sanitize query for filename
-                        safe_filename = "".join([c for c in query[:20] if c.isalpha() or c.isdigit()]).rstrip() or "query"
-                        response['Content-Disposition'] = f'attachment; filename="{safe_filename}_results.csv"'
-                        
-                        writer = csv.writer(response)
-                        writer.writerow(columns) # Escribir cabeceras
-                        writer.writerows(results) # Escribir datos
-                        
-                        return response
-                else:
-                    # Si es un comando como INSERT, UPDATE, DELETE, etc.
-                    message = f"Comando ejecutado con éxito. Filas afectadas: {cursor.rowcount}"
-
-        except Exception as e:
-            error = f"Error al ejecutar la consulta: {e}"
-
-    context = {
-        'query': query,
-        'results': results,
-        'columns': columns,
-        'error': error,
-        'message': message,
-    }
-    return render(request, 'gestion/consulta_sql.html', context)
-
-@login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN])
-def ver_todas_tablas(request):
-    """Vista para superusuario que muestra todas las tablas de la base de datos"""
-    tablas_info = []
-    
-    try:
-        with connection.cursor() as cursor:
-            # Obtener todas las tablas del esquema público
-            cursor.execute("""
-                SELECT table_name, 
-                       (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as columnas,
-                       (SELECT COUNT(*) FROM information_schema.table_constraints 
-                        WHERE table_name = t.table_name AND constraint_type = 'PRIMARY KEY') as tiene_pk
-                FROM information_schema.tables t
-                WHERE table_schema = 'public' 
-                AND table_type = 'BASE TABLE'
-                ORDER BY table_name
-            """)
-            
-            tablas = cursor.fetchall()
-            
-            for tabla in tablas:
-                nombre_tabla = tabla[0]
-                num_columnas = tabla[1]
-                tiene_pk = tabla[2]
-                
-                # Obtener información de columnas para cada tabla
-                cursor.execute("""
-                    SELECT column_name, data_type, is_nullable, column_default
-                    FROM information_schema.columns 
-                    WHERE table_name = %s 
-                    ORDER BY ordinal_position
-                """, [nombre_tabla])
-                
-                columnas = cursor.fetchall()
-                
-                # Obtener número de registros
-                try:
-                    cursor.execute(f"SELECT COUNT(*) FROM {nombre_tabla}")
-                    num_registros = cursor.fetchone()[0]
-                except:
-                    num_registros = "Error"
-                
-                # Obtener claves foráneas
-                cursor.execute("""
-                    SELECT 
-                        kcu.column_name,
-                        ccu.table_name AS foreign_table_name,
-                        ccu.column_name AS foreign_column_name
-                    FROM information_schema.table_constraints AS tc
-                    JOIN information_schema.key_column_usage AS kcu
-                        ON tc.constraint_name = kcu.constraint_name
-                        AND tc.table_schema = kcu.table_schema
-                    JOIN information_schema.constraint_column_usage AS ccu
-                        ON ccu.constraint_name = tc.constraint_name
-                        AND ccu.table_schema = tc.table_schema
-                    WHERE tc.constraint_type = 'FOREIGN KEY' 
-                    AND tc.table_name = %s
-                """, [nombre_tabla])
-                
-                foreign_keys = cursor.fetchall()
-                
-                tablas_info.append({
-                    'nombre': nombre_tabla,
-                    'num_columnas': num_columnas,
-                    'num_registros': num_registros,
-                    'tiene_pk': tiene_pk > 0,
-                    'columnas': columnas,
-                    'foreign_keys': foreign_keys
-                })
-                
-    except Exception as e:
-        error = f"Error al obtener información de las tablas: {e}"
-        tablas_info = []
-    
-    context = {
-        'tablas_info': tablas_info,
-        'error': error if 'error' in locals() else None,
-    }
-    return render(request, 'gestion/ver_todas_tablas.html', context)
-
-@login_required
+@require_permiso_personalizado('dashboard')
 def superadmin_dashboard(request):
     """Dashboard especial para superusuarios con información detallada del sistema"""
     context = {}
@@ -825,7 +622,7 @@ def superadmin_dashboard(request):
     return render(request, 'gestion/superadmin_dashboard.html', context)
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 def exportar_leads_csv(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="listado_leads.csv"'
@@ -857,7 +654,7 @@ def exportar_leads_csv(request):
     return response
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 def exportar_matriculas_csv(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="listado_matriculas.csv"'
@@ -890,7 +687,7 @@ def exportar_matriculas_csv(request):
     return response
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 def exportar_observaciones_csv(request, lead_id):
     lead = get_object_or_404(Lead, id_lead=lead_id)
     observaciones = lead.observaciones_lead.all()
@@ -914,7 +711,7 @@ def exportar_observaciones_csv(request, lead_id):
     return response
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 def exportar_observaciones_matricula_csv(request, matricula_id):
     matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
     observaciones = matricula.observaciones_matricula.all()
@@ -942,86 +739,63 @@ def exportar_observaciones_matricula_csv(request, matricula_id):
 # ==============================================================
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 @handle_cursor_errors
 def gestionar_notas_matricula(request, matricula_id):
     """Vista para gestionar notas de una matrícula específica"""
     matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
-    
     try:
-        # Obtener períodos disponibles según los pagos de pensión realizados
         pagos_pension = list(Pago.objects.filter(
             id_matricula=matricula,
             concepto='Pensión'
         ).values_list('numero_cuota', flat=True).distinct())
-        
-        # Obtener períodos hasta el período actual (cuota pagada + 1)
         max_cuota_pagada = max(pagos_pension) if pagos_pension else 0
-        periodo_actual = max_cuota_pagada + 1  # Si pagó 4 cuotas, está cursando el 5to período
-        
-        # Limitar el período actual al número máximo de pensiones del programa
+        periodo_actual = max_cuota_pagada + 1
         max_periodos_programa = matricula.id_programa.numero_pensiones
         periodo_actual = min(periodo_actual, max_periodos_programa)
-        
-        periodos = list(PeriodoAcademico.objects.filter(
-            numero_periodo__lte=periodo_actual,
+        periodos = list(PeriodoCurso.objects.filter(
+            programa=matricula.id_programa,
+            numero_mes__lte=periodo_actual,
             activo=True
-        ).order_by('numero_periodo'))
-        
-        # Obtener notas existentes
+        ).order_by('numero_mes'))
         notas = list(Nota.objects.filter(id_matricula=matricula).order_by('-fecha_registro'))
-        
     except Exception as e:
-        # Si hay error de cursor, intentar con una nueva conexión
         reset_db_connection()
-        
-        # Reintentar la consulta
         pagos_pension = list(Pago.objects.filter(
             id_matricula=matricula,
             concepto='Pensión'
         ).values_list('numero_cuota', flat=True).distinct())
-        
         max_cuota_pagada = max(pagos_pension) if pagos_pension else 0
-        periodo_actual = max_cuota_pagada + 1  # Si pagó 4 cuotas, está cursando el 5to período
-        
-        # Limitar el período actual al número máximo de pensiones del programa
+        periodo_actual = max_cuota_pagada + 1
         max_periodos_programa = matricula.id_programa.numero_pensiones
         periodo_actual = min(periodo_actual, max_periodos_programa)
-        
-        periodos = list(PeriodoAcademico.objects.filter(
-            numero_periodo__lte=periodo_actual,
+        periodos = list(PeriodoCurso.objects.filter(
+            programa=matricula.id_programa,
+            numero_mes__lte=periodo_actual,
             activo=True
-        ).order_by('numero_periodo'))
-        
+        ).order_by('numero_mes'))
         notas = list(Nota.objects.filter(id_matricula=matricula).order_by('-fecha_registro'))
-    
-    # Manejar nueva nota
     if request.method == 'POST' and 'agregar_nota' in request.POST:
         nota_form = NotaForm(request.POST)
         if nota_form.is_valid():
             nota = nota_form.save(commit=False)
             nota.id_matricula = matricula
             nota.id_usuario_registro = request.user.usuario
-            
-            # Verificar si el alumno puede recibir nota (está al día con pagos)
             if nota.puede_recibir_nota:
                 nota.save()
                 messages.success(request, f'✅ Nota {nota.nota} registrada exitosamente para {nota.tipo_nota}.')
             else:
                 messages.warning(request, '⚠️ El alumno debe estar al día con los pagos para recibir notas.')
-            
             return redirect('gestion:gestionar_notas_matricula', matricula_id=matricula_id)
         else:
             messages.error(request, '❌ Error al registrar la nota. Por favor, verifica los datos.')
     else:
         nota_form = NotaForm()
-        # Filtrar períodos disponibles
-        nota_form.fields['id_periodo'].queryset = PeriodoAcademico.objects.filter(
-            numero_periodo__lte=periodo_actual,
+        nota_form.fields['periodo_curso'].queryset = PeriodoCurso.objects.filter(
+            programa=matricula.id_programa,
+            numero_mes__lte=periodo_actual,
             activo=True
-        ).order_by('numero_periodo')
-    
-    # Estadísticas de notas
+        ).order_by('numero_mes')
     total_notas = len(notas)
     if notas:
         promedio_notas = sum(nota.nota for nota in notas) / total_notas
@@ -1031,7 +805,6 @@ def gestionar_notas_matricula(request, matricula_id):
         promedio_notas = 0
         notas_aprobadas = 0
         notas_desaprobadas = 0
-    
     context = {
         'matricula': matricula,
         'nota_form': nota_form,
@@ -1045,60 +818,42 @@ def gestionar_notas_matricula(request, matricula_id):
     return render(request, 'gestion/gestionar_notas.html', context)
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 @handle_cursor_errors
 def gestionar_asistencias_matricula(request, matricula_id):
     """Vista para gestionar asistencias de una matrícula específica"""
     matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
-    
     try:
-        # Obtener períodos disponibles según los pagos de pensión realizados
         pagos_pension = list(Pago.objects.filter(
             id_matricula=matricula,
             concepto='Pensión'
         ).values_list('numero_cuota', flat=True).distinct())
-        
-        # Obtener períodos hasta el período actual (cuota pagada + 1)
         max_cuota_pagada = max(pagos_pension) if pagos_pension else 0
-        periodo_actual = max_cuota_pagada + 1  # Si pagó 4 cuotas, está cursando el 5to período
-        
-        # Limitar el período actual al número máximo de pensiones del programa
+        periodo_actual = max_cuota_pagada + 1
         max_periodos_programa = matricula.id_programa.numero_pensiones
         periodo_actual = min(periodo_actual, max_periodos_programa)
-        
-        periodos = list(PeriodoAcademico.objects.filter(
-            numero_periodo__lte=periodo_actual,
+        periodos = list(PeriodoCurso.objects.filter(
+            programa=matricula.id_programa,
+            numero_mes__lte=periodo_actual,
             activo=True
-        ).order_by('numero_periodo'))
-        
-        # Obtener asistencias existentes
+        ).order_by('numero_mes'))
         asistencias = list(Asistencia.objects.filter(id_matricula=matricula).order_by('-fecha_clase'))
-        
     except Exception as e:
-        # Si hay error de cursor, intentar con una nueva conexión
         reset_db_connection()
-        
-        # Reintentar la consulta
         pagos_pension = list(Pago.objects.filter(
             id_matricula=matricula,
             concepto='Pensión'
         ).values_list('numero_cuota', flat=True).distinct())
-        
         max_cuota_pagada = max(pagos_pension) if pagos_pension else 0
-        periodo_actual = max_cuota_pagada + 1  # Si pagó 4 cuotas, está cursando el 5to período
-        
-        # Limitar el período actual al número máximo de pensiones del programa
+        periodo_actual = max_cuota_pagada + 1
         max_periodos_programa = matricula.id_programa.numero_pensiones
         periodo_actual = min(periodo_actual, max_periodos_programa)
-        
-        periodos = list(PeriodoAcademico.objects.filter(
-            numero_periodo__lte=periodo_actual,
+        periodos = list(PeriodoCurso.objects.filter(
+            programa=matricula.id_programa,
+            numero_mes__lte=periodo_actual,
             activo=True
-        ).order_by('numero_periodo'))
-        
+        ).order_by('numero_mes'))
         asistencias = list(Asistencia.objects.filter(id_matricula=matricula).order_by('-fecha_clase'))
-    
-    # Manejar nueva asistencia
     if request.method == 'POST' and 'agregar_asistencia' in request.POST:
         asistencia_form = AsistenciaForm(request.POST)
         if asistencia_form.is_valid():
@@ -1112,13 +867,11 @@ def gestionar_asistencias_matricula(request, matricula_id):
             messages.error(request, '❌ Error al registrar la asistencia. Por favor, verifica los datos.')
     else:
         asistencia_form = AsistenciaForm()
-        # Filtrar períodos disponibles
-        asistencia_form.fields['id_periodo'].queryset = PeriodoAcademico.objects.filter(
-            numero_periodo__lte=periodo_actual,
+        asistencia_form.fields['periodo_curso'].queryset = PeriodoCurso.objects.filter(
+            programa=matricula.id_programa,
+            numero_mes__lte=periodo_actual,
             activo=True
-        ).order_by('numero_periodo')
-    
-    # Estadísticas de asistencia
+        ).order_by('numero_mes')
     total_clases = len(asistencias)
     if asistencias:
         clases_asistidas = sum(1 for asistencia in asistencias if asistencia.asistio)
@@ -1128,7 +881,6 @@ def gestionar_asistencias_matricula(request, matricula_id):
         clases_asistidas = 0
         clases_faltadas = 0
         porcentaje_asistencia = 0
-    
     context = {
         'matricula': matricula,
         'asistencia_form': asistencia_form,
@@ -1142,50 +894,31 @@ def gestionar_asistencias_matricula(request, matricula_id):
     return render(request, 'gestion/gestionar_asistencias.html', context)
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN])
-def gestionar_periodos_academicos(request):
-    """Vista para gestionar períodos académicos (solo admin)"""
-    periodos = PeriodoAcademico.objects.all().order_by('-fecha_inicio')
-    
-    if request.method == 'POST' and 'crear_periodo' in request.POST:
-        periodo_form = PeriodoAcademicoForm(request.POST)
-        if periodo_form.is_valid():
-            periodo_form.save()
-            messages.success(request, '✅ Período académico creado exitosamente.')
-            return redirect('gestion:gestionar_periodos_academicos')
-        else:
-            messages.error(request, '❌ Error al crear el período. Por favor, verifica los datos.')
-    else:
-        periodo_form = PeriodoAcademicoForm()
-    
-    context = {
-        'periodos': periodos,
-        'periodo_form': periodo_form,
-    }
-    return render(request, 'gestion/gestionar_periodos_academicos.html', context)
-
-@login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 def exportar_notas_csv(request, matricula_id):
     """Exportar notas de una matrícula a CSV"""
     matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
     notas = matricula.notas.all()
-    
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="notas_{matricula.id_cliente.id_lead.nombre_completo.replace(" ", "_")}.csv"'
     response.write(u'\ufeff'.encode('utf8'))
     writer = csv.writer(response)
-    
     writer.writerow([
-        'Programa Académico', 'Nombre del Alumno', 'DNI', 'Período', 'Tipo de Nota', 'Nota', 'Estado', 'Observaciones', 'Fecha de Registro', 'Usuario'
+        'Programa Académico', 'Nombre del Alumno', 'DNI', 'Mes', 'Curso', 'Tipo de Nota', 'Nota', 'Estado', 'Observaciones', 'Fecha de Registro', 'Usuario'
     ])
-    
     for nota in notas:
+        if nota.periodo_curso:
+            mes = nota.periodo_curso.numero_mes
+            curso_nombre = nota.periodo_curso.curso.nombre
+        else:
+            mes = '-'
+            curso_nombre = '-'
         writer.writerow([
             matricula.id_programa.nombre_programa,
             matricula.id_cliente.id_lead.nombre_completo,
             matricula.id_cliente.dni,
-            nota.id_periodo.nombre_periodo,
+            mes,
+            curso_nombre,
             nota.tipo_nota,
             nota.nota,
             nota.estado_nota,
@@ -1193,35 +926,37 @@ def exportar_notas_csv(request, matricula_id):
             nota.fecha_registro.strftime('%Y-%m-%d %H:%M:%S'),
             nota.id_usuario_registro.nombre_usuario,
         ])
-    
     return response
 
 @login_required
-@rol_requerido(roles_permitidos=[Usuario.Roles.ADMIN, Usuario.Roles.VENTAS])
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
 def exportar_asistencias_csv(request, matricula_id):
     """Exportar asistencias de una matrícula a CSV"""
     matricula = get_object_or_404(Matricula, id_matricula=matricula_id)
     asistencias = matricula.asistencias.all()
-    
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="asistencias_{matricula.id_cliente.id_lead.nombre_completo.replace(" ", "_")}.csv"'
     response.write(u'\ufeff'.encode('utf8'))
     writer = csv.writer(response)
-    
     writer.writerow([
-        'Período', 'Fecha de Clase', 'Asistió', 'Justificación', 'Fecha de Registro', 'Usuario'
+        'Mes', 'Curso', 'Fecha de Clase', 'Asistió', 'Justificación', 'Fecha de Registro', 'Usuario'
     ])
-    
     for asistencia in asistencias:
+        if asistencia.periodo_curso:
+            mes = asistencia.periodo_curso.numero_mes
+            curso_nombre = asistencia.periodo_curso.curso.nombre
+        else:
+            mes = '-'
+            curso_nombre = '-'
         writer.writerow([
-            asistencia.id_periodo.nombre_periodo,
+            mes,
+            curso_nombre,
             asistencia.fecha_clase.strftime('%Y-%m-%d'),
             'Sí' if asistencia.asistio else 'No',
             asistencia.justificacion or '',
             asistencia.fecha_registro.strftime('%Y-%m-%d %H:%M:%S'),
             asistencia.id_usuario_registro.nombre_usuario,
         ])
-    
     return response
 
 def login_view(request):
@@ -1255,12 +990,47 @@ def no_access_view(request):
 
 # Helper decorator para superuser
 def superuser_required(view_func):
-    @wraps(view_func)
-    def _wrapped_view(request, *args, **kwargs):
-        if not request.user.is_superuser:
-            return HttpResponseForbidden('Acceso solo para superusuario.')
-        return view_func(request, *args, **kwargs)
-    return _wrapped_view
+    decorated_view_func = user_passes_test(lambda u: u.is_superuser)(view_func)
+    return decorated_view_func
+
+@superuser_required
+def gestionar_roles(request):
+    roles = RolEmpleado.objects.all()
+    return render(request, 'gestion/rrhh/gestionar_roles.html', {'roles': roles})
+
+@superuser_required
+def crear_rol(request):
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre')
+        descripcion = request.POST.get('descripcion')
+        permisos = request.POST.getlist('permisos')
+        rol = RolEmpleado.objects.create(nombre=nombre, descripcion=descripcion)
+        if permisos:
+            rol.permisos.set(permisos)
+        return redirect('gestion:gestionar_roles')
+    permisos = PermisoPersonalizado.objects.all()
+    return render(request, 'gestion/rrhh/form_rol.html', {'permisos': permisos, 'accion': 'Crear'})
+
+@superuser_required
+def editar_rol(request, rol_id):
+    rol = RolEmpleado.objects.get(id=rol_id)
+    if request.method == 'POST':
+        rol.nombre = request.POST.get('nombre')
+        rol.descripcion = request.POST.get('descripcion')
+        permisos = request.POST.getlist('permisos')
+        rol.save()
+        rol.permisos.set(permisos)
+        return redirect('gestion:gestionar_roles')
+    permisos = PermisoPersonalizado.objects.all()
+    return render(request, 'gestion/rrhh/form_rol.html', {'rol': rol, 'permisos': permisos, 'accion': 'Editar'})
+
+@superuser_required
+def eliminar_rol(request, rol_id):
+    rol = RolEmpleado.objects.get(id=rol_id)
+    if request.method == 'POST':
+        rol.delete()
+        return redirect('gestion:gestionar_roles')
+    return render(request, 'gestion/rrhh/delete_rol.html', {'rol': rol})
 
 # Modelos de catálogo
 CATALOG_MODELS = [
@@ -1326,3 +1096,590 @@ def catalogo_delete(request, modelo, pk):
         obj.delete()
         return redirect(reverse('gestion:catalogo_list', args=[modelo]))
     return render(request, f'gestion/catalogos/delete_{modelo}.html', {'obj': obj, 'modelo': modelo})
+
+@login_required
+@require_permiso_personalizado('empleados')
+def listar_empleados(request):
+    empleados = Empleado.objects.all().order_by('apellidos', 'nombres')
+    return render(request, 'gestion/rrhh/listar_empleados.html', {'empleados': empleados})
+
+@login_required
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
+def crear_empleado(request):
+    if request.method == 'POST':
+        form = EmpleadoForm(request.POST)
+        if form.is_valid():
+            empleado = form.save(commit=False)
+            from django.contrib.auth.models import User
+            from gestion.models import Usuario, RolEmpleado
+            # Crear usuario Django y Usuario del sistema automáticamente
+            dni = form.cleaned_data['dni']
+            nombres = form.cleaned_data['nombres']
+            apellidos = form.cleaned_data['apellidos']
+            email = form.cleaned_data.get('email') or ''
+            # Verificar si ya existe un usuario Django con ese username
+            user, created = User.objects.get_or_create(
+                username=dni,
+                defaults={'first_name': nombres, 'last_name': apellidos, 'email': email}
+            )
+            if created:
+                user.set_password(dni)
+                user.save()
+            # Asignar rol por defecto (por ejemplo, el primero que no sea Admin)
+            rol = RolEmpleado.objects.exclude(nombre__iexact='Admin').first()
+            if not rol:
+                rol = RolEmpleado.objects.create(nombre='Empleado', descripcion='Rol por defecto para empleados')
+            usuario = Usuario.objects.filter(user_django=user).first()
+            if not usuario:
+                usuario = Usuario.objects.create(
+                    user_django=user,
+                    nombre_usuario=f"{nombres} {apellidos}",
+                    rol=rol
+                )
+            elif not usuario.rol:
+                usuario.rol = rol
+                usuario.save()
+            empleado.usuario = usuario
+            empleado.save()
+            return redirect('gestion:listar_empleados')
+    else:
+        form = EmpleadoForm()
+    return render(request, 'gestion/form_empleado.html', {'form': form})
+
+@login_required
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
+def editar_empleado(request, empleado_id):
+    empleado = get_object_or_404(Empleado, id=empleado_id)
+    if request.method == 'POST':
+        form = EmpleadoForm(request.POST, instance=empleado)
+        if form.is_valid():
+            form.save()
+            return redirect('gestion:listar_empleados')
+    else:
+        form = EmpleadoForm(instance=empleado)
+    return render(request, 'gestion/form_empleado.html', {'form': form, 'empleado': empleado})
+
+@login_required
+@rol_requerido(roles_permitidos=['Admin'])
+def eliminar_empleado(request, empleado_id):
+    empleado = get_object_or_404(Empleado, id=empleado_id)
+    if request.method == 'POST':
+        empleado.delete()
+        return redirect('gestion:listar_empleados')
+    return render(request, 'gestion/rrhh/delete_empleado.html', {'empleado': empleado})
+
+@login_required
+def detalle_empleado(request, empleado_id):
+    empleado = get_object_or_404(Empleado, id=empleado_id)
+    return render(request, 'gestion/rrhh/detalle_empleado.html', {'empleado': empleado})
+
+@login_required
+@require_permiso_personalizado('nuevo_empleado')
+def crear_empleado_con_acceso(request):
+    if request.method == 'POST':
+        form = EmpleadoConAccesoForm(request.POST)
+        if form.is_valid():
+            # Crear User de Django
+            user = User.objects.create_user(
+                username=form.cleaned_data['username'],
+                email=form.cleaned_data['email'],
+                password=form.cleaned_data['dni']
+            )
+            # Crear Usuario del sistema
+            rol = form.cleaned_data['rol']
+            usuario = Usuario.objects.create(
+                user_django=user,
+                nombre_usuario=f"{form.cleaned_data['nombres']} {form.cleaned_data['apellidos']}",
+                rol=rol,
+                activo=True
+            )
+            # Asignar permisos personalizados: los del rol + los seleccionados manualmente (sin duplicados)
+            permisos_rol = list(rol.permisos.all())
+            permisos_form = list(form.cleaned_data.get('permisos')) if form.cleaned_data.get('permisos') else []
+            permisos_finales = set(permisos_rol + permisos_form)
+            usuario.permisos_personalizados.set(permisos_finales)
+            # Crear ficha de empleado
+            Empleado.objects.create(
+                usuario=usuario,
+                nombres=form.cleaned_data['nombres'],
+                apellidos=form.cleaned_data['apellidos'],
+                dni=form.cleaned_data['dni'],
+                cargo=form.cleaned_data['cargo'],
+                fecha_nacimiento=form.cleaned_data.get('fecha_nacimiento'),
+                direccion=form.cleaned_data.get('direccion'),
+                telefono=form.cleaned_data.get('telefono'),
+                banco=form.cleaned_data.get('banco'),
+                cuenta_bancaria=form.cleaned_data.get('cuenta_bancaria'),
+                cci=form.cleaned_data.get('cci'),
+                fecha_ingreso=form.cleaned_data.get('fecha_ingreso'),
+                tipo_contrato=form.cleaned_data.get('tipo_contrato'),
+                horas_contrato=form.cleaned_data.get('horas_contrato') or 0,
+                sueldo_basico=form.cleaned_data.get('sueldo_basico') or 0,
+                sueldo_por_hora=form.cleaned_data.get('sueldo_por_hora') or 0,
+                horas_extras=form.cleaned_data.get('horas_extras') or 0,
+                inasistencias=form.cleaned_data.get('inasistencias') or 0,
+                comisiones=form.cleaned_data.get('comisiones') or 0,
+                bonos=form.cleaned_data.get('bonos') or 0,
+                descuentos=form.cleaned_data.get('descuentos') or 0,
+                remuneracion_bruta=form.cleaned_data.get('remuneracion_bruta') or 0,
+                neto_mensual=form.cleaned_data.get('neto_mensual') or 0,
+                neto_quincenal=form.cleaned_data.get('neto_quincenal') or 0,
+                aporte_empleador=form.cleaned_data.get('aporte_empleador') or 0,
+            )
+            return render(request, 'gestion/rrhh/empleado_creado.html', {'username': user.username, 'password': form.cleaned_data['dni']})
+    else:
+        form = EmpleadoConAccesoForm()
+    return render(request, 'gestion/rrhh/form_empleado_con_acceso.html', {'form': form})
+
+@login_required
+@require_permiso_personalizado('documentacion')
+def listar_documentos(request):
+    empleado_id = request.GET.get('empleado_id', '')
+    mes = request.GET.get('mes', '')  # Formato esperado: 'YYYY-MM'
+
+    documentos = Documento.objects.select_related('empleado').order_by('-fecha_subida')
+
+    if empleado_id:
+        documentos = documentos.filter(empleado_id=empleado_id)
+    if mes:
+        try:
+            year, month = map(int, mes.split('-'))
+            documentos = documentos.filter(fecha_subida__year=year, fecha_subida__month=month)
+        except ValueError:
+            pass  # Si el formato es incorrecto, ignora el filtro
+
+    # Lista de empleados únicos con documentos
+    empleados = Empleado.objects.filter(documentos__isnull=False).distinct().order_by('apellidos', 'nombres')
+
+    # Lista de meses únicos con documentos (YYYY-MM)
+    from django.db.models.functions import TruncMonth
+    from django.db.models import DateTimeField
+    meses = (
+        Documento.objects.annotate(mes=TruncMonth('fecha_subida', output_field=DateTimeField()))
+        .values_list('mes', flat=True).distinct().order_by('-mes')
+    )
+
+    return render(request, 'gestion/documentos/listar_documentos.html', {
+        'documentos': documentos,
+        'empleados': empleados,
+        'meses': meses,
+        'empleado_id': empleado_id,
+        'mes': mes,
+    })
+
+@login_required
+def subir_documento(request):
+    if request.method == 'POST':
+        form = DocumentoForm(request.POST, request.FILES)
+        if form.is_valid():
+            empleado = Empleado.objects.get(usuario__user_django=request.user)
+            doc = form.save(commit=False)
+            doc.empleado = empleado
+            doc.save()
+            return redirect('gestion:listar_documentos')
+    else:
+        form = DocumentoForm()
+    return render(request, 'gestion/documentos/subir_documento.html', {'form': form})
+
+@login_required
+def detalle_documento(request, documento_id):
+    doc = Documento.objects.select_related('empleado').get(id=documento_id)
+    return render(request, 'gestion/documentos/detalle_documento.html', {'doc': doc})
+
+@superuser_required
+def resenar_documento(request, documento_id):
+    doc = Documento.objects.get(id=documento_id)
+    if request.method == 'POST':
+        resena = request.POST.get('resena_admin', '').strip()
+        if resena:
+            doc.resena_admin = resena
+            doc.fecha_resena = timezone.now()
+            doc.usuario_admin_resena = request.user.usuario
+            doc.save()
+            return redirect('gestion:detalle_documento', documento_id=doc.id)
+    return render(request, 'gestion/documentos/resenar_documento.html', {'doc': doc})
+
+@login_required
+@require_permiso_personalizado('malla_curricular')
+def listar_programas_malla(request):
+    programas = ProgramaAcademico.objects.all().order_by('nombre_programa')
+    return render(request, 'gestion/listar_programas_malla.html', {'programas': programas})
+
+@login_required
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
+def editar_malla_curricular(request, programa_id):
+    programa = get_object_or_404(ProgramaAcademico, pk=programa_id)
+    duracion = programa.duracion_meses
+    # Crear PeriodoCurso vacíos si faltan
+    existentes = PeriodoCurso.objects.filter(programa=programa).count()
+    if existentes < duracion:
+        for mes in range(existentes + 1, duracion + 1):
+            PeriodoCurso.objects.get_or_create(programa=programa, numero_mes=mes, defaults={
+                'curso': Curso.objects.first() if Curso.objects.exists() else Curso.objects.create(nombre=f'Curso {mes}')
+            })
+    malla = PeriodoCurso.objects.filter(programa=programa).order_by('numero_mes')
+    if request.method == 'POST':
+        for pc in malla:
+            nombre_curso = request.POST.get(f'nombre_curso_{pc.numero_mes}', '').strip()
+            if nombre_curso:
+                # Buscar o crear el curso con ese nombre
+                curso, _ = Curso.objects.get_or_create(nombre=nombre_curso)
+                if pc.curso != curso:
+                    pc.curso = curso
+                    pc.save()
+        messages.success(request, 'Malla curricular actualizada correctamente.')
+        return redirect('gestion:editar_malla_curricular', programa_id=programa.id_programa)
+    return render(request, 'gestion/editar_malla_curricular.html', {
+        'programa': programa,
+        'malla': malla,
+    })
+
+@login_required
+@rol_requerido(roles_permitidos=['Admin', 'Ventas'])
+def panel_presencial(request):
+    # Obtener la modalidad presencial
+    try:
+        modalidad_presencial = Modalidad.objects.get(nombre_modalidad__iexact='Presencial')
+    except Modalidad.DoesNotExist:
+        messages.error(request, 'No existe la modalidad presencial configurada.')
+        return redirect('gestion:dashboard')
+
+    # Agrupar alumnos por programa académico en modalidad presencial
+    matriculas = Matricula.objects.filter(id_modalidad=modalidad_presencial)
+    programas = ProgramaAcademico.objects.filter(matricula__in=matriculas).distinct()
+
+    grupos = []
+    for programa in programas:
+        alumnos = matriculas.filter(id_programa=programa)
+        grupos.append({
+            'programa': programa,
+            'alumnos': alumnos,
+        })
+
+    context = {
+        'grupos': grupos,
+    }
+    return render(request, 'gestion/panel_presencial.html', context)
+
+@login_required
+@require_permiso_personalizado('asistencia_presencial')
+def asistencia_grupal_presencial(request):
+    from django import forms
+    # Obtener modalidad presencial
+    try:
+        modalidad_presencial = Modalidad.objects.get(nombre_modalidad__iexact='Presencial')
+    except Modalidad.DoesNotExist:
+        messages.error(request, 'No existe la modalidad presencial configurada.')
+        return redirect('gestion:dashboard')
+
+    # Formulario para seleccionar programa y fecha
+    class FiltroGrupoForm(forms.Form):
+        programa = forms.ModelChoiceField(queryset=ProgramaAcademico.objects.filter(matricula__id_modalidad=modalidad_presencial).distinct(), label="Programa Académico", required=True)
+        fecha_clase = forms.DateField(label="Fecha de Clase", widget=forms.DateInput(attrs={'type': 'date'}), required=True)
+
+    alumnos = None
+    grupo_seleccionado = None
+    fecha_clase = None
+    asistencia_existente = False
+    if request.method == 'POST' and 'filtrar_grupo' in request.POST:
+        filtro_form = FiltroGrupoForm(request.POST)
+        if filtro_form.is_valid():
+            grupo_seleccionado = filtro_form.cleaned_data['programa']
+            fecha_clase = filtro_form.cleaned_data['fecha_clase']
+            alumnos = Matricula.objects.filter(id_programa=grupo_seleccionado, id_modalidad=modalidad_presencial)
+            # Verificar si ya existe asistencia para esa fecha y grupo
+            asistencia_existente = Asistencia.objects.filter(
+                id_matricula__in=alumnos,
+                fecha_clase=fecha_clase
+            ).exists()
+    elif request.method == 'POST' and 'guardar_asistencia' in request.POST:
+        # Guardar asistencias grupales
+        from datetime import datetime
+        grupo_id = request.POST.get('grupo_id')
+        fecha_clase = request.POST.get('fecha_clase')
+        # Forzar formato YYYY-MM-DD
+        if fecha_clase and not isinstance(fecha_clase, (datetime,)):
+            try:
+                fecha_clase = datetime.strptime(fecha_clase, '%Y-%m-%d').date()
+            except ValueError:
+                # Intentar parsear otros formatos comunes
+                try:
+                    fecha_clase = datetime.strptime(fecha_clase, '%B %d, %Y').date()
+                except ValueError:
+                    messages.error(request, 'Formato de fecha inválido. Use YYYY-MM-DD.')
+                    filtro_form = FiltroGrupoForm()
+                    return render(request, 'gestion/asistencia_grupal_presencial.html', {'filtro_form': filtro_form})
+        grupo_seleccionado = ProgramaAcademico.objects.get(pk=grupo_id)
+        alumnos = Matricula.objects.filter(id_programa=grupo_seleccionado, id_modalidad=modalidad_presencial)
+        for matricula in alumnos:
+            asistio = request.POST.get(f'asistio_{matricula.id_matricula}', 'off') == 'on'
+            justificacion = request.POST.get(f'justificacion_{matricula.id_matricula}', '')
+            # Evitar duplicados
+            asistencia, created = Asistencia.objects.get_or_create(
+                id_matricula=matricula,
+                fecha_clase=fecha_clase,
+                defaults={
+                    'asistio': asistio,
+                    'justificacion': justificacion,
+                    'id_usuario_registro': request.user.usuario,
+                }
+            )
+            if not created:
+                asistencia.asistio = asistio
+                asistencia.justificacion = justificacion
+                asistencia.save()
+        messages.success(request, 'Asistencias guardadas correctamente.')
+        filtro_form = FiltroGrupoForm(initial={'programa': grupo_seleccionado, 'fecha_clase': fecha_clase})
+        asistencia_existente = True
+    else:
+        filtro_form = FiltroGrupoForm()
+
+    context = {
+        'filtro_form': filtro_form,
+        'alumnos': alumnos,
+        'grupo_seleccionado': grupo_seleccionado,
+        'fecha_clase': fecha_clase,
+        'asistencia_existente': asistencia_existente,
+    }
+    return render(request, 'gestion/asistencia_grupal_presencial.html', context)
+
+@login_required
+def menu_rol(request):
+    rol = request.user.usuario.rol.nombre if hasattr(request.user, 'usuario') else None
+    if request.user.is_superuser:
+        return redirect('gestion:dashboard')
+    if rol == 'Profesor':
+        return redirect('gestion:panel_profesor')
+    if rol == 'Estudiante':
+        return redirect('gestion:panel_estudiante')
+    return redirect('gestion:dashboard')
+
+@login_required
+@rol_profesor_required
+def panel_profesor(request):
+    # Solo programas presencial o semi-presencial asignados al profesor
+    profesor = request.user.usuario
+    programas = [pp.programa for pp in profesor.profesorprograma_set.filter(programa__id_modalidad__nombre_modalidad__in=['Presencial', 'Semi-presencial'])]
+    context = {'programas': programas}
+    return render(request, 'gestion/panel_profesor.html', context)
+
+@login_required
+@rol_estudiante_required
+def panel_estudiante(request):
+    estudiante = request.user.usuario
+    matriculas = estudiante.matriculas_realizadas.select_related('id_programa', 'id_modalidad').all()
+    # Para cada matrícula, filtrar notas solo si está al día en pensiones
+    notas_por_matricula = {}
+    for matricula in matriculas:
+        # Verificar pagos
+        pagado_hasta = matricula.pago_set.filter(concepto='Pensión').aggregate(models.Max('numero_cuota'))['numero_cuota__max'] or 0
+        notas = []
+        for nota in matricula.notas.all():
+            if nota.periodo_curso and nota.periodo_curso.numero_mes <= pagado_hasta + 1:
+                notas.append(nota)
+        notas_por_matricula[matricula] = notas
+    context = {'matriculas': matriculas, 'notas_por_matricula': notas_por_matricula}
+    return render(request, 'gestion/panel_estudiante.html', context)
+
+class IngresoForm(forms.ModelForm):
+    class Meta:
+        model = Ingreso
+        fields = ['sede', 'concepto', 'monto', 'fecha']
+
+class GastoForm(forms.ModelForm):
+    class Meta:
+        model = Gasto
+        fields = ['sede', 'concepto', 'monto', 'fecha']
+
+@login_required
+@require_permiso_personalizado('finanzas')
+def panel_gestion_finanzas(request):
+    sedes = Sede.objects.all()
+    sede_id = request.GET.get('sede')
+    sede_seleccionada = Sede.objects.filter(id=sede_id).first() if sede_id else None
+    ingresos = Ingreso.objects.filter(sede=sede_seleccionada) if sede_seleccionada else Ingreso.objects.all()
+    gastos = Gasto.objects.filter(sede=sede_seleccionada) if sede_seleccionada else Gasto.objects.all()
+
+    ingreso_form = IngresoForm()
+    gasto_form = GastoForm()
+    if request.method == 'POST':
+        if 'registrar_ingreso' in request.POST:
+            ingreso_form = IngresoForm(request.POST)
+            if ingreso_form.is_valid():
+                ingreso_form.save()
+                messages.success(request, 'Ingreso registrado correctamente.')
+                return redirect(request.path + (f'?sede={sede_id}' if sede_id else ''))
+        elif 'registrar_gasto' in request.POST:
+            gasto_form = GastoForm(request.POST)
+            if gasto_form.is_valid():
+                gasto_form.save()
+                messages.success(request, 'Gasto registrado correctamente.')
+                return redirect(request.path + (f'?sede={sede_id}' if sede_id else ''))
+        elif 'exportar_csv' in request.POST:
+            tipo = request.POST.get('tipo')
+            response = csv_export_finanzas(tipo, ingresos, gastos)
+            return response
+
+    total_ingresos = sum(i.monto for i in ingresos)
+    total_gastos = sum(g.monto for g in gastos)
+    context = {
+        'sedes': sedes,
+        'sede_seleccionada': sede_seleccionada,
+        'ingresos': ingresos,
+        'gastos': gastos,
+        'ingreso_form': ingreso_form,
+        'gasto_form': gasto_form,
+        'total_ingresos': total_ingresos,
+        'total_gastos': total_gastos,
+    }
+    return render(request, 'gestion/panel_gestion_finanzas.html', context)
+
+def csv_export_finanzas(tipo, ingresos, gastos):
+    response = None
+    if tipo == 'ingresos':
+        response = csv_response('ingresos.csv', ['Fecha', 'Sede', 'Concepto', 'Monto'], [
+            [i.fecha, i.sede.nombre, i.concepto, i.monto] for i in ingresos
+        ])
+    elif tipo == 'gastos':
+        response = csv_response('gastos.csv', ['Fecha', 'Sede', 'Concepto', 'Monto'], [
+            [g.fecha, g.sede.nombre, g.concepto, g.monto] for g in gastos
+        ])
+    return response
+
+def csv_response(filename, headers, rows):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow(headers)
+    for row in rows:
+        writer.writerow(row)
+    return response
+
+@login_required
+@require_permiso_personalizado('consulta_sql')
+def consulta_sql(request):
+    query = request.POST.get('query', '')
+    results = None
+    columns = None
+    error = None
+    message = None
+
+    if request.method == 'POST' and query:
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+
+                # Si es una consulta que devuelve filas (ej. SELECT)
+                if cursor.description:
+                    columns = [col[0] for col in cursor.description]
+                    results = cursor.fetchall()
+
+                    # --- Lógica de descarga CSV ---
+                    if 'download' in request.POST:
+                        response = HttpResponse(content_type='text/csv')
+                        # Sanitize query for filename
+                        safe_filename = "".join([c for c in query[:20] if c.isalpha() or c.isdigit()]).rstrip() or "query"
+                        response['Content-Disposition'] = f'attachment; filename="{safe_filename}_results.csv"'
+                        
+                        writer = csv.writer(response)
+                        writer.writerow(columns) # Escribir cabeceras
+                        writer.writerows(results) # Escribir datos
+                        
+                        return response
+                else:
+                    # Si es un comando como INSERT, UPDATE, DELETE, etc.
+                    message = f"Comando ejecutado con éxito. Filas afectadas: {cursor.rowcount}"
+
+        except Exception as e:
+            error = f"Error al ejecutar la consulta: {e}"
+
+    context = {
+        'query': query,
+        'results': results,
+        'columns': columns,
+        'error': error,
+        'message': message,
+    }
+    return render(request, 'gestion/consulta_sql.html', context)
+
+@login_required
+@require_permiso_personalizado('tablas_bd')
+def ver_todas_tablas(request):
+    """Vista para superusuario que muestra todas las tablas de la base de datos"""
+    tablas_info = []
+    
+    try:
+        with connection.cursor() as cursor:
+            # Obtener todas las tablas del esquema público
+            cursor.execute("""
+                SELECT table_name, 
+                       (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as columnas,
+                       (SELECT COUNT(*) FROM information_schema.table_constraints 
+                        WHERE table_name = t.table_name AND constraint_type = 'PRIMARY KEY') as tiene_pk
+                FROM information_schema.tables t
+                WHERE table_schema = 'public' 
+                AND table_type = 'BASE TABLE'
+                ORDER BY table_name
+            """)
+            
+            tablas = cursor.fetchall()
+            
+            for tabla in tablas:
+                nombre_tabla = tabla[0]
+                num_columnas = tabla[1]
+                tiene_pk = tabla[2]
+                
+                # Obtener información de columnas para cada tabla
+                cursor.execute("""
+                    SELECT column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns 
+                    WHERE table_name = %s 
+                    ORDER BY ordinal_position
+                """, [nombre_tabla])
+                
+                columnas = cursor.fetchall()
+                
+                # Obtener número de registros
+                try:
+                    cursor.execute(f"SELECT COUNT(*) FROM {nombre_tabla}")
+                    num_registros = cursor.fetchone()[0]
+                except:
+                    num_registros = "Error"
+                
+                # Obtener claves foráneas
+                cursor.execute("""
+                    SELECT 
+                        kcu.column_name,
+                        ccu.table_name AS foreign_table_name,
+                        ccu.column_name AS foreign_column_name
+                    FROM information_schema.table_constraints AS tc
+                    JOIN information_schema.key_column_usage AS kcu
+                        ON tc.constraint_name = kcu.constraint_name
+                        AND tc.table_schema = kcu.table_schema
+                    JOIN information_schema.constraint_column_usage AS ccu
+                        ON ccu.constraint_name = tc.constraint_name
+                        AND ccu.table_schema = tc.table_schema
+                    WHERE tc.constraint_type = 'FOREIGN KEY' 
+                    AND tc.table_name = %s
+                """, [nombre_tabla])
+                
+                foreign_keys = cursor.fetchall()
+                
+                tablas_info.append({
+                    'nombre': nombre_tabla,
+                    'num_columnas': num_columnas,
+                    'num_registros': num_registros,
+                    'tiene_pk': tiene_pk > 0,
+                    'columnas': columnas,
+                    'foreign_keys': foreign_keys
+                })
+                
+    except Exception as e:
+        error = f"Error al obtener información de las tablas: {e}"
+        tablas_info = []
+    
+    context = {
+        'tablas_info': tablas_info,
+        'error': error if 'error' in locals() else None,
+    }
+    return render(request, 'gestion/ver_todas_tablas.html', context)

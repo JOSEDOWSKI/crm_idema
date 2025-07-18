@@ -1,0 +1,27 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Malla Curricular{% endblock %}
+{% block content %}
+<h2>Malla Curricular de Programas Académicos</h2>
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th>Programa</th>
+            <th>Tipo</th>
+            <th>Duración (meses)</th>
+            <th>Editar Malla</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for programa in programas %}
+        <tr>
+            <td>{{ programa.nombre_programa }}</td>
+            <td>{{ programa.get_tipo_programa_display }}</td>
+            <td>{{ programa.duracion_meses }}</td>
+            <td><a href="{% url 'gestion:editar_malla_curricular' programa.id_programa %}" class="btn btn-primary btn-sm">Editar</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No hay programas académicos registrados.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 

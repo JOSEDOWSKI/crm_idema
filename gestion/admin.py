@@ -16,6 +16,16 @@ from .models import (
     Matricula,
     Pago,
     ObservacionLead,
+    Empleado,
+    Documento,
+    Curso,
+    PeriodoCurso,
+    Sede,
+    ProfesorPrograma,
+    Ingreso,
+    Gasto,
+    RolEmpleado,
+    PermisoPersonalizado,
 )
 
 # Define un 'inline' para el modelo Usuario (nuestro perfil)
@@ -76,3 +86,23 @@ admin.site.register(LeadInteresPrograma)
 admin.site.register(Matricula, MatriculaAdmin)
 admin.site.register(Pago, PagoAdmin)
 admin.site.register(ObservacionLead)
+admin.site.register(Empleado)
+admin.site.register(Documento)
+admin.site.register(Curso)
+admin.site.register(PeriodoCurso)
+admin.site.register(Sede)
+admin.site.register(ProfesorPrograma)
+admin.site.register(Ingreso)
+admin.site.register(Gasto)
+
+class PermisoPersonalizadoAdmin(admin.ModelAdmin):
+    list_display = ("codigo", "nombre")
+    search_fields = ("codigo", "nombre")
+
+class RolEmpleadoAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "descripcion")
+    search_fields = ("nombre",)
+    filter_horizontal = ("permisos",)
+
+admin.site.register(RolEmpleado, RolEmpleadoAdmin)
+admin.site.register(PermisoPersonalizado, PermisoPersonalizadoAdmin)

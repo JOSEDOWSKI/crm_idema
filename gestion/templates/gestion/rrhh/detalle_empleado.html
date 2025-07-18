@@ -1,0 +1,37 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Detalle de Empleado{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Detalle de Empleado</h2>
+    <div class="card">
+        <div class="card-body">
+            <h4>{{ empleado.nombres }} {{ empleado.apellidos }}</h4>
+            <p><strong>DNI:</strong> {{ empleado.dni }}</p>
+            <p><strong>Cargo:</strong> {{ empleado.cargo }}</p>
+            <p><strong>Fecha de Ingreso:</strong> {{ empleado.fecha_ingreso }}</p>
+            <p><strong>Tipo de Contrato:</strong> {{ empleado.tipo_contrato }}</p>
+            <p><strong>Horas según contrato:</strong> {{ empleado.horas_contrato }}</p>
+            <p><strong>Sueldo Básico:</strong> S/ {{ empleado.sueldo_basico }}</p>
+            <p><strong>Sueldo por Hora:</strong> S/ {{ empleado.sueldo_por_hora }}</p>
+            <p><strong>Horas Extras:</strong> {{ empleado.horas_extras }}</p>
+            <p><strong>Inasistencias:</strong> {{ empleado.inasistencias }}</p>
+            <p><strong>Comisiones:</strong> S/ {{ empleado.comisiones }}</p>
+            <p><strong>Bonos:</strong> S/ {{ empleado.bonos }}</p>
+            <p><strong>Descuentos:</strong> S/ {{ empleado.descuentos }}</p>
+            <p><strong>Remuneración Bruta:</strong> S/ {{ empleado.remuneracion_bruta }}</p>
+            <p><strong>Neto Mensual:</strong> S/ {{ empleado.neto_mensual }}</p>
+            <p><strong>Neto Quincenal:</strong> S/ {{ empleado.neto_quincenal }}</p>
+            <p><strong>Aporte del Empleador:</strong> S/ {{ empleado.aporte_empleador }}</p>
+            <hr>
+            <p><strong>Banco:</strong> {{ empleado.banco }}</p>
+            <p><strong>Cuenta Bancaria:</strong> {{ empleado.cuenta_bancaria }}</p>
+            <p><strong>CCI:</strong> {{ empleado.cci }}</p>
+            <p><strong>Teléfono:</strong> {{ empleado.telefono }}</p>
+            <p><strong>Email:</strong> {{ empleado.email }}</p>
+            <p><strong>Dirección:</strong> {{ empleado.direccion }}</p>
+            <p><strong>Fecha de Nacimiento:</strong> {{ empleado.fecha_nacimiento }}</p>
+        </div>
+    </div>
+    <a href="{% url 'gestion:listar_empleados' %}" class="btn btn-secondary mt-3">Volver al listado</a>
+</div>
+{% endblock %} 

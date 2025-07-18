@@ -1,0 +1,35 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Gestionar Roles{% endblock %}
+{% block content %}
+<h2>Gestión de Roles</h2>
+<a href="{% url 'gestion:crear_rol' %}" class="btn btn-success mb-3">Crear nuevo rol</a>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Permisos</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rol in roles %}
+        <tr>
+            <td>{{ rol.nombre }}</td>
+            <td>{{ rol.descripcion }}</td>
+            <td>
+                {% for permiso in rol.permisos.all %}
+                    <span class="badge bg-primary">{{ permiso.nombre }}</span>
+                {% empty %}
+                    <span class="text-muted">Sin permisos</span>
+                {% endfor %}
+            </td>
+            <td>
+                <a href="{% url 'gestion:editar_rol' rol.id %}" class="btn btn-sm btn-warning">Editar</a>
+                <a href="{% url 'gestion:eliminar_rol' rol.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %} 

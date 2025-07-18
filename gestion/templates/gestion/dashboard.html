@@ -9,13 +9,12 @@
 {{ ingresos_programa_data_json|json_script:"ingresos_programa_data" }}
 
 <div class="container-fluid mt-4">
-    <h2 class="mb-4">Dashboard</h2>
-
+    <h2 class="mb-4" style="background: var(--color-titulo-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 800;">Dashboard</h2>
     <!-- Fila de KPIs principales -->
     <div class="row">
         {% if rol_usuario == Roles.ADMIN or rol_usuario == Roles.ANALISTA %}
         <div class="col-md-3 mb-4">
-            <div class="card text-white bg-primary">
+            <div class="card text-white shadow-glow" style="background: var(--color-primario);">
                 <div class="card-body">
                     <h5 class="card-title">Total Leads</h5>
                     <p class="card-text fs-4">{{ total_leads }}</p>
@@ -23,7 +22,7 @@
             </div>
         </div>
         <div class="col-md-3 mb-4">
-            <div class="card text-white bg-success">
+            <div class="card text-white shadow-glow" style="background: var(--color-secundario);">
                 <div class="card-body">
                     <h5 class="card-title">Total Alumnos (Clientes)</h5>
                     <p class="card-text fs-4">{{ total_alumnos }}</p>
@@ -31,7 +30,7 @@
             </div>
         </div>
          <div class="col-md-3 mb-4">
-            <div class="card text-white bg-info">
+            <div class="card text-dark shadow-glow" style="background: #e0f7fa;">
                 <div class="card-body">
                     <h5 class="card-title">Leads de este Mes</h5>
                     <p class="card-text fs-4">{{ leads_este_mes }}</p>
@@ -39,7 +38,7 @@
             </div>
         </div>
         <div class="col-md-3 mb-4">
-            <div class="card text-white bg-secondary">
+            <div class="card text-dark shadow-glow" style="background: #fffde7;">
                 <div class="card-body">
                     <h5 class="card-title">Clientes Nuevos del Mes</h5>
                     <p class="card-text fs-4">{{ clientes_este_mes }}</p>
@@ -47,10 +46,9 @@
             </div>
         </div>
         {% endif %}
-
         {% if rol_usuario == Roles.ADMIN %}
         <div class="col-md-3 mb-4">
-            <div class="card text-white bg-danger">
+            <div class="card text-white shadow-glow" style="background: #e53935;">
                 <div class="card-body">
                     <h5 class="card-title">Monto Recaudado Total</h5>
                     <p class="card-text fs-4">S/ {{ monto_recaudado|floatformat:2 }}</p>
@@ -58,7 +56,7 @@
             </div>
         </div>
         <div class="col-md-3 mb-4">
-            <div class="card text-white bg-warning">
+            <div class="card text-white shadow-glow" style="background: #ffd600; color: var(--color-secundario);">
                 <div class="card-body">
                     <h5 class="card-title">Tasa de Conversión</h5>
                     <p class="card-text fs-4">{{ tasa_conversion|floatformat:2 }}%</p>
@@ -66,7 +64,7 @@
             </div>
         </div>
         <div class="col-md-3 mb-4">
-            <div class="card text-white bg-dark">
+            <div class="card text-white shadow-glow" style="background: var(--color-fondo-oscuro);">
                 <div class="card-body">
                     <h5 class="card-title">Tasa de Retención</h5>
                     <p class="card-text fs-4">{{ tasa_retencion|floatformat:2 }}%</p>
@@ -75,13 +73,12 @@
         </div>
         {% endif %}
     </div>
-
     <!-- Fila de Tablas y Gráficos -->
     <div class="row">
         {% if rol_usuario == Roles.ADMIN or rol_usuario == Roles.MARKETING %}
         <!-- Leads por Canal de Contacto -->
         <div class="col-md-6 mb-4">
-            <div class="card">
+            <div class="card shadow-glow">
                 <div class="card-header">Leads por Canal de Contacto</div>
                 <div class="card-body">
                     <table class="table">
@@ -97,10 +94,9 @@
                 </div>
             </div>
         </div>
-
         <!-- Programas más Populares por Interés -->
         <div class="col-md-6 mb-4">
-            <div class="card">
+            <div class="card shadow-glow">
                 <div class="card-header">Programas con Mayor Interés</div>
                 <div class="card-body">
                     <table class="table">
@@ -117,11 +113,10 @@
             </div>
         </div>
         {% endif %}
-
         {% if rol_usuario == Roles.ADMIN %}
         <!-- Rendimiento de Asesores -->
         <div class="col-md-6 mb-4">
-            <div class="card">
+            <div class="card shadow-glow">
                 <div class="card-header">Rendimiento de Asesores (Ventas)</div>
                 <div class="card-body">
                     <table class="table">
@@ -142,10 +137,9 @@
                 </div>
             </div>
         </div>
-
         <!-- Ingresos por Programa -->
         <div class="col-md-6 mb-4">
-            <div class="card">
+            <div class="card shadow-glow">
                 <div class="card-header">Ingresos Totales por Programa</div>
                 <div class="card-body">
                     <table class="table">

@@ -1,0 +1,61 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Asistencia Grupal Presencial{% endblock %}
+{% block content %}
+<h2 class="mb-4">Asistencia Grupal - Alumnos Presenciales</h2>
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {{ filtro_form.as_p }}
+      <button type="submit" name="filtrar_grupo" class="btn btn-primary">Filtrar Grupo</button>
+    </form>
+  </div>
+</div>
+
+{% if alumnos %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="grupo_id" value="{{ grupo_seleccionado.id_programa }}">
+    <input type="hidden" name="fecha_clase" value="{{ fecha_clase|date:'Y-m-d' }}">
+    <div class="card mb-4">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0">Asistencia para {{ grupo_seleccionado.nombre_programa }} - {{ fecha_clase }}</h5>
+      </div>
+      <div class="card-body">
+        {% if asistencia_existente %}
+          <div class="alert alert-warning">Ya existe asistencia registrada para este grupo y fecha. Puedes actualizarla.</div>
+        {% endif %}
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>DNI</th>
+                <th>Email</th>
+                <th>Asistió</th>
+                <th>Justificación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for matricula in alumnos %}
+                <tr>
+                  <td>{{ matricula.id_cliente.id_lead.nombre_completo }}</td>
+                  <td>{{ matricula.id_cliente.dni }}</td>
+                  <td>{{ matricula.id_cliente.email }}</td>
+                  <td>
+                    <input type="checkbox" name="asistio_{{ matricula.id_matricula }}" id="asistio_{{ matricula.id_matricula }}" {% if asistencia_existente %}{% for a in matricula.asistencias.all %}{% if a.fecha_clase|stringformat:'s' == fecha_clase|stringformat:'s' and a.asistio %}checked{% endif %}{% endfor %}{% endif %}>
+                  </td>
+                  <td>
+                    <input type="text" name="justificacion_{{ matricula.id_matricula }}" class="form-control" value="{% if asistencia_existente %}{% for a in matricula.asistencias.all %}{% if a.fecha_clase|stringformat:'s' == fecha_clase|stringformat:'s' %}{{ a.justificacion }}{% endif %}{% endfor %}{% endif %}">
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <button type="submit" name="guardar_asistencia" class="btn btn-success">Guardar Asistencias</button>
+      </div>
+    </div>
+  </form>
+{% endif %}
+{% endblock %} 

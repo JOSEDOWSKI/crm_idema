@@ -1,0 +1,18 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Reseñar Documento{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Reseñar Documento</h2>
+    <p><strong>Título:</strong> {{ doc.titulo }}</p>
+    <p><strong>Empleado:</strong> {{ doc.empleado.nombres }} {{ doc.empleado.apellidos }}</p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="resena_admin" class="form-label">Reseña del Administrador</label>
+            <textarea name="resena_admin" id="resena_admin" class="form-control" rows="4">{{ doc.resena_admin }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Guardar Reseña</button>
+        <a href="{% url 'gestion:detalle_documento' doc.id %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %} 

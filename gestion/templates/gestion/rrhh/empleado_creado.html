@@ -1,0 +1,13 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Empleado Creado{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="alert alert-success">
+        <h4>¡Empleado creado exitosamente!</h4>
+        <p><strong>Usuario:</strong> {{ username }}</p>
+        <p><strong>Contraseña inicial:</strong> {{ password }}</p>
+        <p>El empleado podrá cambiar su contraseña después de iniciar sesión.</p>
+    </div>
+    <a href="{% url 'gestion:listar_empleados' %}" class="btn btn-primary">Ir al listado de empleados</a>
+</div>
+{% endblock %} 

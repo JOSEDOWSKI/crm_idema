@@ -1,0 +1,228 @@
+.splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    overflow: hidden;
+    transition: background 0.5s;
+}
+.splash-screen.splash-light {
+    background: #fff;
+}
+.splash-screen.splash-dark {
+    background: #111;
+}
+.splash-screen.splash-opening {
+    background: rgba(0,0,0,0) !important;
+    transition: none !important;
+}
+.curtain-light {
+    background: #fff;
+}
+.curtain-dark {
+    background: #111;
+}
+.promesa-logo.promesa-logo-big {
+    width: 200px;
+    height: 200px;
+}
+.curtain {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    z-index: 10;
+    transition: transform 1s cubic-bezier(0.77,0,0.18,1);
+}
+.curtain-left {
+    left: 0;
+    border-top-right-radius: 60px;
+    border-bottom-right-radius: 60px;
+}
+.curtain-right {
+    right: 0;
+    border-top-left-radius: 60px;
+    border-bottom-left-radius: 60px;
+}
+.splash-content {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    z-index: 20;
+    color: #222;
+}
+.splash-screen.splash-dark .splash-content {
+    color: #fff;
+}
+.logo-container {
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.promesa-logo {
+    width: 120px;
+    height: 120px;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+}
+.promesa-logo.promesa-logo-big {
+    width: 200px;
+    height: 200px;
+}
+.splash-text {
+    margin-bottom: 2rem;
+}
+.splash-text h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(45deg, #19736a, #123b40);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+}
+.splash-text p {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 0;
+    opacity: 0.9;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+}
+.loading-dots {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+.dot {
+    width: 12px;
+    height: 12px;
+    background-color: #19736a;
+    border-radius: 50%;
+    animation: dotPulse 1.4s ease-in-out infinite both;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+.splash-screen.splash-dark .dot {
+    background-color: #fff;
+}
+.dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+.dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+.dot:nth-child(3) {
+    animation-delay: 0s;
+}
+@keyframes dotPulse {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+.particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: rgba(25, 115, 106, 0.6);
+    border-radius: 50%;
+    transition: background 0.5s;
+}
+.splash-screen.splash-dark .particle {
+    background: rgba(255,255,255,0.6);
+}
+.particle-1 { top: 20%; left: 10%; }
+.particle-2 { top: 60%; left: 80%; }
+.particle-3 { top: 80%; left: 20%; }
+.particle-4 { top: 30%; left: 70%; }
+.particle-5 { top: 70%; left: 60%; }
+.particle-6 { top: 40%; left: 30%; }
+.splash-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+    animation: backgroundFloat 20s ease-in-out infinite;
+}
+.splash-screen.splash-opening::before {
+    display: none !important;
+}
+@keyframes backgroundFloat {
+    0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    33% {
+        transform: translate(-10px, -10px) rotate(1deg);
+    }
+    66% {
+        transform: translate(10px, -5px) rotate(-1deg);
+    }
+}
+@media (max-width: 768px) {
+    .promesa-logo {
+        width: 100px;
+        height: 100px;
+    }
+    .splash-text h1 {
+        font-size: 2rem;
+    }
+    .splash-text p {
+        font-size: 1rem;
+    }
+    .dot {
+        width: 10px;
+        height: 10px;
+    }
+}
+@media (max-width: 480px) {
+    .promesa-logo {
+        width: 80px;
+        height: 80px;
+    }
+    .splash-text h1 {
+        font-size: 1.3rem;
+    }
+    .splash-text p {
+        font-size: 0.9rem;
+    }
+}
+.splash-screen.fade-out {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s;
+}
+.splash-screen.splash-hidden {
+    display: none !important;
+}
+body.splash-active {
+    overflow: hidden !important;
+} 

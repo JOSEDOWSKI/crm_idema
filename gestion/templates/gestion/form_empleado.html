@@ -1,0 +1,341 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Crear Empleado{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .form-section h5 {
+        color: #495057;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+    .calculation-box {
+        background: #e3f2fd;
+        border: 1px solid #2196f3;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    .calculation-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding: 5px 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .calculation-row:last-child {
+        border-bottom: none;
+        font-weight: bold;
+        font-size: 1.1em;
+        color: #1976d2;
+    }
+    .form-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .form-group {
+        flex: 1;
+    }
+    .form-group label {
+        font-weight: 600;
+        color: #495057;
+    }
+    .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-user-plus"></i> 
+                {% if empleado %}Editar Empleado{% else %}Crear Nuevo Empleado{% endif %}
+            </h2>
+            
+            <form method="post" enctype="multipart/form-data" id="empleadoForm">
+                {% csrf_token %}
+                
+                <!-- Información Personal -->
+                <div class="form-section">
+                    <h5><i class="fas fa-user"></i> Información Personal</h5>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.nombres.id_for_label }}">{{ form.nombres.label }}</label>
+                            {{ form.nombres }}
+                            {% if form.nombres.errors %}
+                                <div class="text-danger">{{ form.nombres.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.apellidos.id_for_label }}">{{ form.apellidos.label }}</label>
+                            {{ form.apellidos }}
+                            {% if form.apellidos.errors %}
+                                <div class="text-danger">{{ form.apellidos.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.dni.id_for_label }}">{{ form.dni.label }}</label>
+                            {{ form.dni }}
+                            {% if form.dni.errors %}
+                                <div class="text-danger">{{ form.dni.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.fecha_nacimiento.id_for_label }}">{{ form.fecha_nacimiento.label }}</label>
+                            {{ form.fecha_nacimiento }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }}</label>
+                            {{ form.telefono }}
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.direccion.id_for_label }}">{{ form.direccion.label }}</label>
+                            {{ form.direccion }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información Laboral -->
+                <div class="form-section">
+                    <h5><i class="fas fa-briefcase"></i> Información Laboral</h5>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.usuario.id_for_label }}">{{ form.usuario.label }}</label>
+                            {{ form.usuario }}
+                            {% if form.usuario.errors %}
+                                <div class="text-danger">{{ form.usuario.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.cargo.id_for_label }}">{{ form.cargo.label }}</label>
+                            {{ form.cargo }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.sede.id_for_label }}">{{ form.sede.label }}</label>
+                            {{ form.sede }}
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.fecha_ingreso.id_for_label }}">{{ form.fecha_ingreso.label }}</label>
+                            {{ form.fecha_ingreso }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.tipo_contrato.id_for_label }}">{{ form.tipo_contrato.label }}</label>
+                            {{ form.tipo_contrato }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.horas_contrato.id_for_label }}">{{ form.horas_contrato.label }}</label>
+                            {{ form.horas_contrato }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información Bancaria -->
+                <div class="form-section">
+                    <h5><i class="fas fa-university"></i> Información Bancaria</h5>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.banco.id_for_label }}">{{ form.banco.label }}</label>
+                            {{ form.banco }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.cuenta_bancaria.id_for_label }}">{{ form.cuenta_bancaria.label }}</label>
+                            {{ form.cuenta_bancaria }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.cci.id_for_label }}">{{ form.cci.label }}</label>
+                            {{ form.cci }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Remuneración -->
+                <div class="form-section">
+                    <h5><i class="fas fa-money-bill-wave"></i> Remuneración</h5>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.sueldo_basico.id_for_label }}">{{ form.sueldo_basico.label }}</label>
+                            {{ form.sueldo_basico }}
+                            {% if form.sueldo_basico.errors %}
+                                <div class="text-danger">{{ form.sueldo_basico.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.sueldo_por_hora.id_for_label }}">{{ form.sueldo_por_hora.label }}</label>
+                            {{ form.sueldo_por_hora }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.horas_extras.id_for_label }}">{{ form.horas_extras.label }}</label>
+                            {{ form.horas_extras }}
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.inasistencias.id_for_label }}">{{ form.inasistencias.label }}</label>
+                            {{ form.inasistencias }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.comisiones.id_for_label }}">{{ form.comisiones.label }}</label>
+                            {{ form.comisiones }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.bonos.id_for_label }}">{{ form.bonos.label }}</label>
+                            {{ form.bonos }}
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.descuentos.id_for_label }}">{{ form.descuentos.label }}</label>
+                            {{ form.descuentos }}
+                        </div>
+                    </div>
+
+                    <!-- Cálculos Automáticos -->
+                    <div class="calculation-box">
+                        <h6><i class="fas fa-calculator"></i> Cálculos Automáticos</h6>
+                        <div class="calculation-row">
+                            <span>Sueldo Básico:</span>
+                            <span id="sueldoBasico">S/. 0.00</span>
+                        </div>
+                        <div class="calculation-row">
+                            <span>Horas Extras:</span>
+                            <span id="horasExtras">S/. 0.00</span>
+                        </div>
+                        <div class="calculation-row">
+                            <span>Descuento Inasistencias:</span>
+                            <span id="descuentoInasistencias">S/. 0.00</span>
+                        </div>
+                        <div class="calculation-row">
+                            <span>Comisiones y Bonos:</span>
+                            <span id="comisionesBonos">S/. 0.00</span>
+                        </div>
+                        <div class="calculation-row">
+                            <span>Remuneración Bruta:</span>
+                            <span id="remuneracionBruta">S/. 0.00</span>
+                        </div>
+                        <div class="calculation-row">
+                            <span>Descuento AFP (10%):</span>
+                            <span id="descuentoAfp">S/. 0.00</span>
+                        </div>
+                        <div class="calculation-row">
+                            <span>Descuento Salud (9%):</span>
+                            <span id="descuentoSalud">S/. 0.00</span>
+                        </div>
+                        <div class="calculation-row">
+                            <span>Otros Descuentos:</span>
+                            <span id="otrosDescuentos">S/. 0.00</span>
+                        </div>
+                        <div class="calculation-row">
+                            <span><strong>Neto Mensual:</strong></span>
+                            <span id="netoMensual"><strong>S/. 0.00</strong></span>
+                        </div>
+                        <div class="calculation-row">
+                            <span><strong>Neto Quincenal:</strong></span>
+                            <span id="netoQuincenal"><strong>S/. 0.00</strong></span>
+                        </div>
+                        <div class="calculation-row">
+                            <span><strong>Aporte Empleador:</strong></span>
+                            <span id="aporteEmpleador"><strong>S/. 0.00</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <div class="form-section">
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'gestion:listar_empleados' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 
+                            {% if empleado %}Actualizar Empleado{% else %}Crear Empleado{% endif %}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('empleadoForm');
+    const inputs = ['sueldo_basico', 'sueldo_por_hora', 'horas_extras', 'inasistencias', 'comisiones', 'bonos', 'descuentos'];
+    
+    // Función para calcular remuneración
+    function calcularRemuneracion() {
+        const sueldoBasico = parseFloat(document.getElementById('id_sueldo_basico').value) || 0;
+        const sueldoPorHora = parseFloat(document.getElementById('id_sueldo_por_hora').value) || 0;
+        const horasExtras = parseFloat(document.getElementById('id_horas_extras').value) || 0;
+        const inasistencias = parseFloat(document.getElementById('id_inasistencias').value) || 0;
+        const comisiones = parseFloat(document.getElementById('id_comisiones').value) || 0;
+        const bonos = parseFloat(document.getElementById('id_bonos').value) || 0;
+        const descuentos = parseFloat(document.getElementById('id_descuentos').value) || 0;
+        
+        // Cálculos
+        const pagoHorasExtras = sueldoPorHora * horasExtras * 1.5;
+        const descuentoInasistencias = sueldoPorHora * inasistencias;
+        const remuneracionBruta = sueldoBasico + pagoHorasExtras - descuentoInasistencias + comisiones + bonos;
+        const descuentoAfp = sueldoBasico * 0.10;
+        const descuentoSalud = sueldoBasico * 0.09;
+        const netoMensual = remuneracionBruta - descuentoAfp - descuentoSalud - descuentos;
+        const netoQuincenal = netoMensual / 2;
+        const aporteEmpleador = sueldoBasico * 0.20;
+        
+        // Actualizar display
+        document.getElementById('sueldoBasico').textContent = `S/. ${sueldoBasico.toFixed(2)}`;
+        document.getElementById('horasExtras').textContent = `S/. ${pagoHorasExtras.toFixed(2)}`;
+        document.getElementById('descuentoInasistencias').textContent = `S/. ${descuentoInasistencias.toFixed(2)}`;
+        document.getElementById('comisionesBonos').textContent = `S/. ${(comisiones + bonos).toFixed(2)}`;
+        document.getElementById('remuneracionBruta').textContent = `S/. ${remuneracionBruta.toFixed(2)}`;
+        document.getElementById('descuentoAfp').textContent = `S/. ${descuentoAfp.toFixed(2)}`;
+        document.getElementById('descuentoSalud').textContent = `S/. ${descuentoSalud.toFixed(2)}`;
+        document.getElementById('otrosDescuentos').textContent = `S/. ${descuentos.toFixed(2)}`;
+        document.getElementById('netoMensual').innerHTML = `<strong>S/. ${netoMensual.toFixed(2)}</strong>`;
+        document.getElementById('netoQuincenal').innerHTML = `<strong>S/. ${netoQuincenal.toFixed(2)}</strong>`;
+        document.getElementById('aporteEmpleador').innerHTML = `<strong>S/. ${aporteEmpleador.toFixed(2)}</strong>`;
+    }
+    
+    // Agregar event listeners
+    inputs.forEach(inputId => {
+        const input = document.getElementById(`id_${inputId}`);
+        if (input) {
+            input.addEventListener('input', calcularRemuneracion);
+        }
+    });
+    
+    // Calcular inicialmente
+    calcularRemuneracion();
+});
+</script>
+{% endblock %} 

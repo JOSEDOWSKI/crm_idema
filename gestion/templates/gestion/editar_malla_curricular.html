@@ -1,0 +1,30 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Editar Malla Curricular{% endblock %}
+{% block content %}
+<h2>Editar Malla Curricular: {{ programa.nombre_programa }}</h2>
+<p><strong>Tipo:</strong> {{ programa.get_tipo_programa_display }}<br>
+<strong>Duración:</strong> {{ programa.duracion_meses }} meses</p>
+<form method="post">
+    {% csrf_token %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Mes</th>
+                <th>Nombre del Curso</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pc in malla %}
+            <tr>
+                <td>Mes {{ pc.numero_mes }}</td>
+                <td>
+                    <input type="text" name="nombre_curso_{{ pc.numero_mes }}" value="{{ pc.curso.nombre }}" class="form-control" required>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <button type="submit" class="btn btn-success">Guardar Cambios</button>
+    <a href="{% url 'gestion:listar_programas_malla' %}" class="btn btn-secondary">Volver</a>
+</form>
+{% endblock %} 

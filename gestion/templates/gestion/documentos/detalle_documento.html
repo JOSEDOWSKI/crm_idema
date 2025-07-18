@@ -1,0 +1,23 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Detalle de Documento{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ doc.titulo }}</h2>
+    <p><strong>Subido por:</strong> {{ doc.empleado.nombres }} {{ doc.empleado.apellidos }}</p>
+    <p><strong>Fecha de subida:</strong> {{ doc.fecha_subida|date:"d/m/Y H:i" }}</p>
+    <p><strong>Descripción:</strong> {{ doc.descripcion }}</p>
+    <p><strong>Archivo:</strong> <a href="{{ doc.archivo.url }}" target="_blank">Descargar</a></p>
+    <hr>
+    <h5>Reseña del Administrador</h5>
+    {% if doc.resena_admin %}
+        <div class="alert alert-success">{{ doc.resena_admin }}</div>
+        <p><small>Por: {{ doc.usuario_admin_resena.nombre_usuario }} el {{ doc.fecha_resena|date:"d/m/Y H:i" }}</small></p>
+    {% else %}
+        <div class="alert alert-warning">Sin reseña aún.</div>
+    {% endif %}
+    <a href="{% url 'gestion:listar_documentos' %}" class="btn btn-secondary mt-3">Volver al listado</a>
+    {% if user.is_superuser %}
+    <a href="{% url 'gestion:resenar_documento' doc.id %}" class="btn btn-warning mt-3">Reseñar</a>
+    {% endif %}
+</div>
+{% endblock %} 

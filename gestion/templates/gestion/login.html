@@ -1,14 +1,14 @@
 {% extends 'gestion/base.html' %}
 
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card mt-5">
-                <div class="card-header text-center">
-                    <h4>Iniciar Sesión</h4>
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center" style="background: var(--color-gradiente);">
+    <div class="row w-100 justify-content-center">
+        <div class="col-md-5 col-lg-4">
+            <div class="card shadow-glow border-0 blur-bg">
+                <div class="card-header text-center bg-transparent border-0 pb-0">
+                    <h4 class="fw-bold mb-0" style="background: var(--color-titulo-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Iniciar Sesión</h4>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-danger">{{ message }}</div>
@@ -17,7 +17,7 @@
                     <form method="post">
                         {% csrf_token %}
                         {{ form.as_p }}
-                        <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                        <button type="submit" class="btn btn-primary w-100 py-2 mt-2">Entrar</button>
                     </form>
                 </div>
             </div>

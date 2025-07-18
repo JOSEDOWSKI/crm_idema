@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,130 +8,325 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,500,700,800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-primario: #19736a;
+            --color-secundario: #123b40;
+            --color-fondo-claro: #fff;
+            --color-fondo-oscuro: #111;
+            --color-particula-prim: rgba(25, 115, 106, 0.18);
+            --color-particula-sec: rgba(18, 59, 64, 0.12);
+            --color-gradiente: linear-gradient(90deg, #19736a 0%, #123b40 100%);
+            --color-gradiente-inv: linear-gradient(90deg, #123b40 0%, #19736a 100%);
+            --color-titulo-grad: linear-gradient(90deg, #19736a 0%, #123b40 100%);
+            --color-titulo-grad-dark: linear-gradient(90deg, #fff 0%, #19736a 100%);
+            --color-borde: #e0e0e0;
+            --color-sombra: 0 4px 24px 0 rgba(25, 115, 106, 0.08);
+        }
+        html, body {
+            font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+            background: var(--color-fondo-claro);
+            color: #222;
+            transition: background 0.4s, color 0.4s;
+        }
+        body.dark-mode {
+            background: var(--color-fondo-oscuro);
+            color: #f5f5f5;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+            font-weight: 800;
+            background: var(--color-titulo-grad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4, body.dark-mode h5, body.dark-mode h6 {
+            background: var(--color-titulo-grad-dark);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .navbar {
+            background: var(--color-gradiente) !important;
+            box-shadow: var(--color-sombra);
+            border-bottom-left-radius: 1.5rem;
+            border-bottom-right-radius: 1.5rem;
+        }
+        .navbar-brand, .navbar-nav .nav-link, .navbar-dark .navbar-nav .nav-link {
+            color: #fff !important;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .navbar-nav .nav-link.active, .navbar-nav .nav-link:focus, .navbar-nav .nav-link:hover {
+            color: #ffd600 !important;
+        }
+        .dropdown-menu {
+            background: var(--color-fondo-claro);
+            border: 1px solid var(--color-borde);
+            border-radius: 1rem;
+            box-shadow: var(--color-sombra);
+        }
+        .dropdown-item.active, .dropdown-item:active, .dropdown-item:hover {
+            background: var(--color-primario);
+            color: #fff !important;
+        }
+        .btn, .card, .form-control, .dropdown-menu, .modal-content {
+            border-radius: 1.1rem !important;
+            box-shadow: var(--color-sombra);
+            transition: box-shadow 0.3s, background 0.3s, color 0.3s;
+        }
+        .btn-primary {
+            background: var(--color-gradiente);
+            border: none;
+            color: #fff;
+            font-weight: 700;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background: var(--color-gradiente-inv);
+            color: #fff;
+        }
+        .btn-warning {
+            background: #ffd600 !important;
+            color: var(--color-secundario) !important;
+            border: none;
+        }
+        .btn-warning:hover, .btn-warning:focus {
+            background: #ffe066 !important;
+            color: var(--color-secundario) !important;
+        }
+        .card-header, .bg-primary {
+            background: var(--color-gradiente) !important;
+            color: #fff !important;
+            font-weight: 700;
+        }
+        .card {
+            border: 1px solid var(--color-borde);
+            background: var(--color-fondo-claro);
+        }
+        body.dark-mode .card {
+            background: #181818;
+            color: #fff;
+        }
+        .form-control:focus {
+            border-color: var(--color-primario);
+            box-shadow: 0 0 0 0.2rem rgba(25, 115, 106, 0.15);
+        }
+        .alert-primary {
+            background: var(--color-primario) !important;
+            color: #fff !important;
+        }
+        .alert-warning {
+            background: #ffd600 !important;
+            color: var(--color-secundario) !important;
+        }
+        .alert-success {
+            background: #d4edda !important;
+            color: #155724 !important;
+        }
+        .alert-danger {
+            background: #f8d7da !important;
+            color: #721c24 !important;
+        }
+        .shadow-glow {
+            box-shadow: 0 0 16px 2px rgba(25, 115, 106, 0.18), 0 2px 8px rgba(18, 59, 64, 0.10);
+        }
+        .blur-bg {
+            backdrop-filter: blur(6px);
+            background: rgba(255,255,255,0.7);
+        }
+        body.dark-mode .blur-bg {
+            background: rgba(25, 115, 106, 0.12);
+        }
+        @media (max-width: 768px) {
+            .navbar {
+                border-radius: 0 0 1.2rem 1.2rem;
+            }
+            .card, .btn, .form-control {
+                border-radius: 0.8rem !important;
+            }
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{% if request.user.is_authenticated %}{% url 'gestion:dashboard' %}{% else %}{% url 'gestion:login' %}{% endif %}">CRM Académico</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    {% if request.user.is_authenticated %}
-                    
-                        {# Dashboard: Visible para Admin, Marketing, Analista #}
-                        {% if request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Marketing' or request.user.usuario.rol == 'Analista' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'gestion:dashboard' %}">Dashboard</a>
-                        </li>
-                        {% endif %}
-
-                        {# Superadmin Dashboard: Visible solo para Superuser #}
-                        {% if request.user.is_superuser %}
-                        <li class="nav-item">
-                            <a class="nav-link text-warning fw-bold" href="{% url 'gestion:superadmin_dashboard' %}">
-                                <i class="fas fa-crown"></i> Super Dashboard
-                            </a>
-                        </li>
-                        {% endif %}
-
-                        {# Leads & Matrículas: Visible para Admin y Ventas #}
-                        {% if request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Ventas' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'gestion:listar_leads' %}">Leads</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'gestion:listar_matriculas' %}">Matrículas</a>
-                        </li>
-                        {% endif %}
-
-                        {# SQL: Visible para Superuser, Admin y Analista #}
-                        {% if request.user.is_superuser or request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Analista' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'gestion:consulta_sql' %}">SQL</a>
-                        </li>
-                        {% endif %}
-
-                        {# Ver Todas las Tablas: Visible para Superuser y Admin #}
-                        {% if request.user.is_superuser or request.user.usuario.rol == 'Admin' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'gestion:ver_todas_tablas' %}">📊 Tablas BD</a>
-                        </li>
-                        {% endif %}
-
-                        {# Períodos Académicos: Visible solo para Admin #}
-                        {% if request.user.usuario.rol == 'Admin' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'gestion:gestionar_periodos_academicos' %}">📅 Períodos Académicos</a>
-                        </li>
-                        {% endif %}
-
-                        {# Menú Super Admin: Visible solo para Superuser #}
-                        {% if request.user.is_superuser %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-warning" href="#" id="superAdminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Super Admin
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="superAdminDropdown">
-                                <li><a class="dropdown-item text-warning fw-bold" href="{% url 'gestion:superadmin_dashboard' %}">
-                                    <i class="fas fa-crown"></i> Super Dashboard
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'gestion:listar_leads' %}">Listar Leads</a></li>
-                                <li><a class="dropdown-item" href="{% url 'gestion:crear_lead' %}">Crear Lead</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'gestion:listar_matriculas' %}">Listar Matrículas</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'gestion:consulta_sql' %}">Consulta SQL</a></li>
-                                <li><a class="dropdown-item" href="{% url 'gestion:ver_todas_tablas' %}">📊 Ver Todas las Tablas</a></li>
-                                <li><a class="dropdown-item" href="{% url 'gestion:poblar_bd' %}">Poblar BD de Ejemplo</a></li>
-                            </ul>
-                        </li>
-                        {% endif %}
-
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav">
-                    {% if request.user.is_authenticated %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Bienvenido, {{ request.user.first_name }} ({{ request.user.usuario.get_rol_display }})
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                <li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin Django</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'gestion:logout' %}">Cerrar Sesión</a></li>
-                            </ul>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'gestion:login' %}">Iniciar Sesión</a>
-                        </li>
-                    {% endif %}
-                </ul>
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen splash-light">
+        <div class="curtain curtain-left curtain-light"></div>
+        <div class="curtain curtain-right curtain-light"></div>
+        <div class="particles" id="splash-particles">
+            <div class="particle particle-1"></div>
+            <div class="particle particle-2"></div>
+            <div class="particle particle-3"></div>
+            <div class="particle particle-4"></div>
+            <div class="particle particle-5"></div>
+            <div class="particle particle-6"></div>
+        </div>
+        <div class="splash-content">
+            <div class="logo-container">
+                <!-- LOGO SVG PROMESA/GETDEVTOOLS -->
+                <svg class="promesa-logo promesa-logo-big" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="60" cy="60" r="58" stroke="#19736a" stroke-width="4" fill="#fff"/>
+                    <text x="50%" y="54%" text-anchor="middle" fill="#19736a" font-size="32" font-family="Montserrat, Arial, sans-serif" font-weight="bold" dy=".3em">P</text>
+                </svg>
+            </div>
+            <div class="splash-text">
+                <h1>SGUL IDEMA</h1>
+                <p>Powered by PROMESA &amp; GETDEVTOOLS</p>
+            </div>
+            <div class="loading-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
             </div>
         </div>
-    </nav>
-
-    {% if request.user.is_superuser %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Admin Catálogos</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'departamento' %}">Departamentos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'provincia' %}">Provincias</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'distrito' %}">Distritos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'programa' %}">Programas Académicos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'modalidad' %}">Modalidades</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'mediocontacto' %}">Medios de Contacto</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'gestion:catalogo_list' 'mediopago' %}">Medios de Pago</a></li>
+    </div>
+    <link rel="stylesheet" href="{% static 'gestion/splashscreen.css' %}">
+    <script src="{% static 'gestion/splashscreen.js' %}"></script>
+    <!-- Sidebar -->
+    <div class="sidebar d-flex flex-column flex-shrink-0 p-3" id="sidebarMenu">
+        <a href="{% if request.user.is_authenticated %}{% url 'gestion:dashboard' %}{% else %}{% url 'gestion:login' %}{% endif %}" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none sidebar-brand">
+            <span class="fs-4 fw-bold" style="background: var(--color-titulo-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">SGUL IDEMA</span>
+        </a>
+        <hr>
+        <ul class="nav nav-pills flex-column mb-auto">
+            {% if request.user.is_authenticated %}
+                {% if request.user.is_superuser %}
+                    <li>{% comment %}Dashboard{% endcomment %}<a href="{% url 'gestion:superadmin_dashboard' %}" class="nav-link text-white"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                    <li><a href="{% url 'gestion:gestionar_roles' %}" class="nav-link text-white"><i class="fas fa-user-shield me-2"></i>Gestionar Roles</a></li>
+                    <li><a href="{% url 'gestion:listar_leads' %}" class="nav-link text-white"><i class="fas fa-users me-2"></i>Leads</a></li>
+                    <li><a href="{% url 'gestion:crear_lead' %}" class="nav-link text-white"><i class="fas fa-user-plus me-2"></i>Crear Lead</a></li>
+                    <li><a href="{% url 'gestion:listar_matriculas' %}" class="nav-link text-white"><i class="fas fa-certificate me-2"></i>Matrículas</a></li>
+                    <li><a href="{% url 'gestion:listar_programas_malla' %}" class="nav-link text-white"><i class="fas fa-stream me-2"></i>Malla Curricular</a></li>
+                    <li><a href="{% url 'gestion:asistencia_grupal_presencial' %}" class="nav-link text-white"><i class="fas fa-calendar-check me-2"></i>Asistencia Presencial</a></li>
+                    <li><a href="{% url 'gestion:listar_empleados' %}" class="nav-link text-white"><i class="fas fa-user-tie me-2"></i>Empleados</a></li>
+                    <li><a href="{% url 'gestion:crear_empleado_con_acceso' %}" class="nav-link text-white"><i class="fas fa-user-plus me-2"></i>Nuevo empleado</a></li>
+                    <li><a href="{% url 'gestion:listar_documentos' %}" class="nav-link text-white"><i class="fas fa-file-alt me-2"></i>Documentación</a></li>
+                    <li><a href="{% url 'gestion:consulta_sql' %}" class="nav-link text-white"><i class="fas fa-database me-2"></i>Consulta SQL</a></li>
+                    <li><a href="{% url 'gestion:ver_todas_tablas' %}" class="nav-link text-white"><i class="fas fa-table me-2"></i>Tablas BD</a></li>
+                    <li><a href="{% url 'gestion:poblar_bd' %}" class="nav-link text-white"><i class="fas fa-database me-2"></i>Poblar BD</a></li>
+                    <li><a href="{% url 'gestion:panel_gestion_finanzas' %}" class="nav-link text-white"><i class="fas fa-coins me-2"></i>Finanzas</a></li>
+                {% else %}
+                    {% with perms=request.user.usuario.get_permisos_totales %}
+                        {% for permiso in perms %}
+                            {% if permiso.codigo == 'dashboard' %}
+                                <li><a href="{% url 'gestion:superadmin_dashboard' %}" class="nav-link text-white"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                            {% elif permiso.codigo == 'leads' %}
+                                <li><a href="{% url 'gestion:listar_leads' %}" class="nav-link text-white"><i class="fas fa-users me-2"></i>Leads</a></li>
+                            {% elif permiso.codigo == 'crear_lead' %}
+                                <li><a href="{% url 'gestion:crear_lead' %}" class="nav-link text-white"><i class="fas fa-user-plus me-2"></i>Crear Lead</a></li>
+                            {% elif permiso.codigo == 'matriculas' %}
+                                <li><a href="{% url 'gestion:listar_matriculas' %}" class="nav-link text-white"><i class="fas fa-certificate me-2"></i>Matrículas</a></li>
+                            {% elif permiso.codigo == 'malla_curricular' %}
+                                <li><a href="{% url 'gestion:listar_programas_malla' %}" class="nav-link text-white"><i class="fas fa-stream me-2"></i>Malla Curricular</a></li>
+                            {% elif permiso.codigo == 'asistencia_presencial' %}
+                                <li><a href="{% url 'gestion:asistencia_grupal_presencial' %}" class="nav-link text-white"><i class="fas fa-calendar-check me-2"></i>Asistencia Presencial</a></li>
+                            {% elif permiso.codigo == 'empleados' %}
+                                <li><a href="{% url 'gestion:listar_empleados' %}" class="nav-link text-white"><i class="fas fa-user-tie me-2"></i>Empleados</a></li>
+                            {% elif permiso.codigo == 'nuevo_empleado' %}
+                                <li><a href="{% url 'gestion:crear_empleado_con_acceso' %}" class="nav-link text-white"><i class="fas fa-user-plus me-2"></i>Nuevo empleado</a></li>
+                            {% elif permiso.codigo == 'documentacion' %}
+                                <li><a href="{% url 'gestion:listar_documentos' %}" class="nav-link text-white"><i class="fas fa-file-alt me-2"></i>Documentación</a></li>
+                            {% elif permiso.codigo == 'consulta_sql' %}
+                                <li><a href="{% url 'gestion:consulta_sql' %}" class="nav-link text-white"><i class="fas fa-database me-2"></i>Consulta SQL</a></li>
+                            {% elif permiso.codigo == 'tablas_bd' %}
+                                <li><a href="{% url 'gestion:ver_todas_tablas' %}" class="nav-link text-white"><i class="fas fa-table me-2"></i>Tablas BD</a></li>
+                            {% elif permiso.codigo == 'poblar_bd' %}
+                                <li><a href="{% url 'gestion:poblar_bd' %}" class="nav-link text-white"><i class="fas fa-database me-2"></i>Poblar BD</a></li>
+                            {% elif permiso.codigo == 'finanzas' %}
+                                <li><a href="{% url 'gestion:panel_gestion_finanzas' %}" class="nav-link text-white"><i class="fas fa-coins me-2"></i>Finanzas</a></li>
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                {% endif %}
+            {% endif %}
+        </ul>
+        <hr>
+        <div class="dropdown">
+            {% if request.user.is_authenticated %}
+                <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-user-circle fa-lg me-2"></i>
+                    <strong>{{ request.user.first_name }}</strong>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+                    <li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin Django</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'gestion:logout' %}">Cerrar Sesión</a></li>
                 </ul>
-            </div>
+            {% else %}
+                <a href="{% url 'gestion:login' %}" class="d-flex align-items-center text-white text-decoration-none">
+                    <i class="fas fa-sign-in-alt fa-lg me-2"></i> Iniciar Sesión
+                </a>
+            {% endif %}
         </div>
-    </nav>
-    {% endif %}
+    </div>
+    <style>
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 250px;
+        background: var(--color-gradiente);
+        color: #fff;
+        z-index: 1040;
+        box-shadow: var(--color-sombra);
+        padding-top: 1.5rem;
+        transition: width 0.3s;
+    }
+    .sidebar .nav-link {
+        color: #fff;
+        font-weight: 500;
+        border-radius: 0.7rem;
+        margin-bottom: 0.2rem;
+        transition: background 0.2s, color 0.2s;
+    }
+    .sidebar .nav-link.active, .sidebar .nav-link:hover {
+        background: rgba(255,255,255,0.12);
+        color: #ffd600;
+    }
+    .sidebar .sidebar-brand {
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+    }
+    .sidebar .dropdown-menu {
+        background: var(--color-secundario);
+        border-radius: 1rem;
+    }
+    .sidebar .dropdown-item {
+        color: #fff;
+    }
+    .sidebar .dropdown-item:hover {
+        background: var(--color-primario);
+        color: #ffd600;
+    }
+    @media (max-width: 991.98px) {
+        .sidebar {
+            width: 70px;
+            padding-left: 0.2rem;
+            padding-right: 0.2rem;
+        }
+        .sidebar .sidebar-brand, .sidebar .nav-link span, .sidebar .dropdown strong {
+            display: none;
+        }
+        .sidebar .nav-link i {
+            margin-right: 0;
+            font-size: 1.3rem;
+        }
+    }
+    main.container, main.container-fluid {
+        margin-left: 260px;
+        transition: margin-left 0.3s;
+    }
+    @media (max-width: 991.98px) {
+        main.container, main.container-fluid {
+            margin-left: 80px;
+        }
+    }
+    </style>
+    <!-- Fin Sidebar -->
 
     <main class="container mt-4">
         {% if messages %}

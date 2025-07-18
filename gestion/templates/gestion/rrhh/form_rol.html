@@ -1,0 +1,31 @@
+{% extends 'gestion/base.html' %}
+{% block title %}{{ accion }} Rol{% endblock %}
+{% block content %}
+<h2>{{ accion }} Rol</h2>
+<form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="nombre" class="form-label">Nombre del Rol</label>
+        <input type="text" class="form-control" id="nombre" name="nombre" value="{{ rol.nombre|default:'' }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="descripcion" class="form-label">Descripción</label>
+        <textarea class="form-control" id="descripcion" name="descripcion">{{ rol.descripcion|default:'' }}</textarea>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Permisos (vistas)</label>
+        <div class="row">
+            {% for permiso in permisos %}
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permisos" id="permiso_{{ permiso.id }}" value="{{ permiso.id }}" {% if rol and permiso in rol.permisos.all %}checked{% endif %}>
+                    <label class="form-check-label" for="permiso_{{ permiso.id }}">{{ permiso.nombre }}</label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">{{ accion }} Rol</button>
+    <a href="{% url 'gestion:gestionar_roles' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %} 

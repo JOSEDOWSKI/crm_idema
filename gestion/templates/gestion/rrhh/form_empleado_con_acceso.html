@@ -1,0 +1,51 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Nuevo Empleado con Acceso{% endblock %}
+{% block content %}
+<h2 class="mb-4">Crear Empleado con Acceso</h2>
+<form method="post">
+  {% csrf_token %}
+  <div class="row">
+    <div class="col-md-6">
+      {{ form.username.label_tag }} {{ form.username }}
+      {{ form.email.label_tag }} {{ form.email }}
+      <div class="mb-3">
+        {{ form.rol.label_tag }} <span class="text-danger">*</span>
+        {{ form.rol }}
+        {% if form.rol.errors %}<div class="text-danger">{{ form.rol.errors }}</div>{% endif %}
+      </div>
+      <div class="mb-3">
+        {{ form.permisos.label_tag }}
+        {{ form.permisos }}
+        {% if form.permisos.errors %}<div class="text-danger">{{ form.permisos.errors }}</div>{% endif %}
+      </div>
+      {{ form.nombres.label_tag }} {{ form.nombres }}
+      {{ form.apellidos.label_tag }} {{ form.apellidos }}
+      {{ form.dni.label_tag }} {{ form.dni }}
+      {{ form.cargo.label_tag }} {{ form.cargo }}
+      {{ form.fecha_nacimiento.label_tag }} {{ form.fecha_nacimiento }}
+      {{ form.direccion.label_tag }} {{ form.direccion }}
+      {{ form.telefono.label_tag }} {{ form.telefono }}
+      {{ form.banco.label_tag }} {{ form.banco }}
+      {{ form.cuenta_bancaria.label_tag }} {{ form.cuenta_bancaria }}
+      {{ form.cci.label_tag }} {{ form.cci }}
+      {{ form.fecha_ingreso.label_tag }} {{ form.fecha_ingreso }}
+      {{ form.tipo_contrato.label_tag }} {{ form.tipo_contrato }}
+    </div>
+    <div class="col-md-6">
+      {{ form.horas_contrato.label_tag }} {{ form.horas_contrato }}
+      {{ form.sueldo_basico.label_tag }} {{ form.sueldo_basico }}
+      {{ form.sueldo_por_hora.label_tag }} {{ form.sueldo_por_hora }}
+      {{ form.horas_extras.label_tag }} {{ form.horas_extras }}
+      {{ form.inasistencias.label_tag }} {{ form.inasistencias }}
+      {{ form.comisiones.label_tag }} {{ form.comisiones }}
+      {{ form.bonos.label_tag }} {{ form.bonos }}
+      {{ form.descuentos.label_tag }} {{ form.descuentos }}
+      {{ form.remuneracion_bruta.label_tag }} {{ form.remuneracion_bruta }}
+      {{ form.neto_mensual.label_tag }} {{ form.neto_mensual }}
+      {{ form.neto_quincenal.label_tag }} {{ form.neto_quincenal }}
+      {{ form.aporte_empleador.label_tag }} {{ form.aporte_empleador }}
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary mt-3">Crear Empleado</button>
+</form>
+{% endblock %} 

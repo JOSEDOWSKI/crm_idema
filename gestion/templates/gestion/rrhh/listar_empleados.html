@@ -1,0 +1,35 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Empleados{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Empleados</h2>
+    <a href="{% url 'gestion:crear_empleado' %}" class="btn btn-success mb-3">+ Nuevo Empleado</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>DNI</th>
+                <th>Cargo</th>
+                <th>Teléfono</th>
+                <th>Email</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for empleado in empleados %}
+            <tr>
+                <td><a href="{% url 'gestion:detalle_empleado' empleado.id %}">{{ empleado.nombres }} {{ empleado.apellidos }}</a></td>
+                <td>{{ empleado.dni }}</td>
+                <td>{{ empleado.cargo }}</td>
+                <td>{{ empleado.telefono }}</td>
+                <td>{{ empleado.email }}</td>
+                <td>
+                    <a href="{% url 'gestion:editar_empleado' empleado.id %}" class="btn btn-sm btn-primary">Editar</a>
+                    <a href="{% url 'gestion:eliminar_empleado' empleado.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %} 

@@ -1,0 +1,28 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Panel Estudiante{% endblock %}
+{% block content %}
+<h2 class="mb-4" style="color: #003366;">Panel del Estudiante</h2>
+{% if matriculas %}
+  {% for matricula in matriculas %}
+    <div class="card mb-4">
+      <div class="card-header" style="background: var(--idema-azul-medio); color: #fff;">
+        <h5 class="mb-0">{{ matricula.id_programa.nombre_programa }} <span class="badge" style="background: var(--idema-azul-claro); color: #003366;">{{ matricula.id_modalidad.nombre_modalidad }}</span></h5>
+      </div>
+      <div class="card-body">
+        <h6>Notas</h6>
+        {% if notas_por_matricula|default:{}|dictsort:matricula %}
+          <ul>
+            {% for nota in notas_por_matricula[matricula] %}
+              <li><strong>{{ nota.periodo_curso }}</strong>: {{ nota.nota }} ({{ nota.tipo_nota }})</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="alert alert-warning">No puedes ver tus notas porque no estás al día en tus pensiones.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="alert alert-info">No tienes matrículas activas.</div>
+{% endif %}
+{% endblock %} 

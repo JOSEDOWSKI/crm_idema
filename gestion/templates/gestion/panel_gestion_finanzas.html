@@ -1,0 +1,109 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Gestión de Finanzas{% endblock %}
+{% block content %}
+<h2 class="mb-4">Gestión de Ingresos y Gastos por Sede</h2>
+<form method="get" class="mb-4">
+  <div class="row g-2 align-items-end">
+    <div class="col-auto">
+      <label for="sede" class="form-label">Filtrar por sede:</label>
+      <select name="sede" id="sede" class="form-select">
+        <option value="">Todas</option>
+        {% for sede in sedes %}
+          <option value="{{ sede.id }}" {% if sede_seleccionada and sede.id == sede_seleccionada.id %}selected{% endif %}>{{ sede.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+    </div>
+  </div>
+</form>
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-success text-white">Registrar Ingreso</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {{ ingreso_form.as_p }}
+          <button type="submit" name="registrar_ingreso" class="btn btn-success">Registrar Ingreso</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-danger text-white">Registrar Gasto</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {{ gasto_form.as_p }}
+          <button type="submit" name="registrar_gasto" class="btn btn-danger">Registrar Gasto</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row mb-4">
+  <div class="col-md-6">
+    <form method="post" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="tipo" value="ingresos">
+      <button type="submit" name="exportar_csv" class="btn btn-outline-success mb-2">Exportar Ingresos a CSV</button>
+    </form>
+  </div>
+  <div class="col-md-6">
+    <form method="post" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="tipo" value="gastos">
+      <button type="submit" name="exportar_csv" class="btn btn-outline-danger mb-2">Exportar Gastos a CSV</button>
+    </form>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-6">
+    <div class="card mb-4">
+      <div class="card-header bg-success text-white">Ingresos</div>
+      <div class="card-body">
+        <table class="table table-striped">
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th></tr></thead>
+          <tbody>
+            {% for ingreso in ingresos %}
+              <tr>
+                <td>{{ ingreso.fecha|date:'d/m/Y' }}</td>
+                <td>{{ ingreso.concepto }}</td>
+                <td>S/. {{ ingreso.monto }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="text-center">Sin ingresos</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="fw-bold">Total ingresos: S/. {{ total_ingresos }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card mb-4">
+      <div class="card-header bg-danger text-white">Gastos</div>
+      <div class="card-body">
+        <table class="table table-striped">
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th></tr></thead>
+          <tbody>
+            {% for gasto in gastos %}
+              <tr>
+                <td>{{ gasto.fecha|date:'d/m/Y' }}</td>
+                <td>{{ gasto.concepto }}</td>
+                <td>S/. {{ gasto.monto }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="text-center">Sin gastos</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="fw-bold">Total gastos: S/. {{ total_gastos }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 

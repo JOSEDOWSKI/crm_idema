@@ -1,0 +1,46 @@
+{% extends 'gestion/base.html' %}
+{% block title %}Panel Presencial{% endblock %}
+{% block content %}
+<h2 class="mb-4">Panel de Alumnos Presenciales</h2>
+{% if grupos %}
+  {% for grupo in grupos %}
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">{{ grupo.programa.nombre_programa }}</h5>
+      </div>
+      <div class="card-body">
+        {% if grupo.alumnos %}
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>DNI</th>
+                <th>Email</th>
+                <th>Estado</th>
+                <th>Fecha Inscripción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for matricula in grupo.alumnos %}
+                <tr>
+                  <td>{{ matricula.id_cliente.id_lead.nombre_completo }}</td>
+                  <td>{{ matricula.id_cliente.dni }}</td>
+                  <td>{{ matricula.id_cliente.email }}</td>
+                  <td>{{ matricula.estado }}</td>
+                  <td>{{ matricula.fecha_inscripcion|date:'d/m/Y H:i' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p>No hay alumnos en este programa.</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="alert alert-info">No hay alumnos presenciales registrados.</div>
+{% endif %}
+{% endblock %} 
