@@ -18,6 +18,9 @@
                 <p><strong>Programa:</strong> {{ matricula.id_programa.nombre_programa }}</p>
                 <p><strong>Modalidad:</strong> {{ matricula.id_modalidad.nombre_modalidad }}</p>
                 <p><strong>Estado:</strong> {{ matricula.get_estado_display }}</p>
+                {% if matricula.observacion %}
+                <p><strong>Observación:</strong> {{ matricula.observacion|linebreaks }}</p>
+                {% endif %}
 
                 <h6 class="mt-4">Documentos Adjuntos</h6>
                 <ul class="list-group list-group-flush">
