@@ -570,7 +570,7 @@ def exportar_leads_csv(request):
         writer.writerow([
             lead.nombre_completo,
             lead.telefono,
-            lead.email,
+            lead.cliente.email if hasattr(lead, 'cliente') and lead.cliente else 'No convertido',
             lead.get_genero_display(),
             lead.get_estado_lead_display(),
             lead.id_usuario_atencion.nombre_usuario if lead.id_usuario_atencion else 'N/A',

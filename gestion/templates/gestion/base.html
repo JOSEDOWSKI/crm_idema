@@ -19,14 +19,14 @@
                     {% if request.user.is_authenticated %}
                     
                         {# Dashboard: Visible para Admin, Marketing, Analista #}
-                        {% if request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Marketing' or request.user.usuario.rol == 'Analista' %}
+                        {% if request.user.usuario.rol == 'ADMIN' or request.user.usuario.rol == 'MARKETING' or request.user.usuario.rol == 'ANALISTA' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'gestion:dashboard' %}">Dashboard</a>
                         </li>
                         {% endif %}
 
                         {# Leads & Matrículas: Visible para Admin y Ventas #}
-                        {% if request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Ventas' %}
+                        {% if request.user.usuario.rol == 'ADMIN' or request.user.usuario.rol == 'VENTAS' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'gestion:listar_leads' %}">Leads</a>
                         </li>
@@ -36,7 +36,7 @@
                         {% endif %}
 
                         {# SQL: Visible para Superuser, Admin y Analista #}
-                        {% if request.user.is_superuser or request.user.usuario.rol == 'Admin' or request.user.usuario.rol == 'Analista' %}
+                        {% if request.user.is_superuser or request.user.usuario.rol == 'ADMIN' or request.user.usuario.rol == 'ANALISTA' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'gestion:consulta_sql' %}">SQL</a>
                         </li>

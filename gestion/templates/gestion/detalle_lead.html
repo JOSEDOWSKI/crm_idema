@@ -11,11 +11,11 @@
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">{{ lead.nombre_completo }}</h5>
-                    <p class="card-text"><strong>Email:</strong> {{ lead.email }}</p>
+                    <p class="card-text"><strong>Email:</strong> {% if lead.cliente %}{{ lead.cliente.email }}{% else %}No convertido a cliente{% endif %}</p>
                     <p class="card-text"><strong>Teléfono:</strong> {{ lead.telefono }}</p>
                     <p class="card-text"><strong>Estado:</strong> <span class="badge bg-info text-dark">{{ lead.get_estado_lead_display }}</span></p>
-                    <p class="card-text"><strong>Asesor Asignado:</strong> {{ lead.id_usuario.nombre_usuario }}</p>
-                    <p class="card-text"><strong>Fecha de Creación:</strong> {{ lead.fecha_creacion|date:"d/m/Y" }}</p>
+                    <p class="card-text"><strong>Asesor Asignado:</strong> {{ lead.id_usuario_atencion.nombre_usuario }}</p>
+                    <p class="card-text"><strong>Fecha de Creación:</strong> {{ lead.fecha_ingreso|date:"d/m/Y" }}</p>
                      <p class="card-text"><strong>Programas de Interés:</strong>
                         <ul>
                         {% for interes in lead.leadinteresprograma_set.all %}
