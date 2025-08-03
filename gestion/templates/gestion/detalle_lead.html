@@ -1,0 +1,76 @@
+{% extends "gestion/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Columna de Detalles del Lead -->
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Detalles del Lead</h3>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ lead.nombre_completo }}</h5>
+                    <p class="card-text"><strong>Email:</strong> {{ lead.email }}</p>
+                    <p class="card-text"><strong>Teléfono:</strong> {{ lead.telefono }}</p>
+                    <p class="card-text"><strong>Estado:</strong> <span class="badge bg-info text-dark">{{ lead.get_estado_lead_display }}</span></p>
+                    <p class="card-text"><strong>Asesor Asignado:</strong> {{ lead.id_usuario.nombre_usuario }}</p>
+                    <p class="card-text"><strong>Fecha de Creación:</strong> {{ lead.fecha_creacion|date:"d/m/Y" }}</p>
+                     <p class="card-text"><strong>Programas de Interés:</strong>
+                        <ul>
+                        {% for interes in lead.leadinteresprograma_set.all %}
+                            <li>{{ interes.id_programa.nombre_programa }}</li>
+                        {% empty %}
+                            <li>No especificado</li>
+                        {% endfor %}
+                        </ul>
+                    </p>
+                </div>
+                <div class="card-footer">
+                     <a href="{% url 'gestion:listar_leads' %}" class="btn btn-secondary">Volver a la Lista</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna de Interacciones -->
+        <div class="col-md-7">
+            <!-- Formulario para Nueva Interacción -->
+            <div class="card mb-4">
+                 <div class="card-header">
+                    <h4>Registrar Nueva Interacción</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button type="submit" class="btn btn-primary">Guardar Interacción</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Historial de Interacciones -->
+            <div class="card">
+                <div class="card-header">
+                    <h4>Historial de Interacciones</h4>
+                </div>
+                <div class="card-body">
+                    {% for interaccion in interacciones %}
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <p class="card-text">
+                                    <strong>Tipo:</strong> {{ interaccion.get_tipo_interaccion_display }}<br>
+                                    <strong>Fecha:</strong> {{ interaccion.fecha_interaccion|date:"d/m/Y H:i" }}<br>
+                                    <strong>Asesor:</strong> {{ interaccion.id_usuario.nombre_usuario }}<br>
+                                    <strong>Resultado:</strong> {{ interaccion.resultado|linebreaks }}
+                                </p>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p>No hay interacciones registradas.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

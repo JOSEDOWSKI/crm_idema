@@ -1,0 +1,175 @@
+{% extends 'gestion/base.html' %}
+
+{% block title %}Listado de Leads{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Listado de Leads</h2>
+        <div>
+            <a href="{% url 'gestion:crear_lead' %}" class="btn btn-primary">Añadir Lead</a>
+            <a href="{% url 'gestion:exportar_leads_csv' %}" class="btn btn-success">Exportar a CSV</a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="thead-dark">
+                <tr>
+                    {% with 'nombre_completo' as sort_field %}
+                    <th>
+                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}">
+                            Nombre
+                            {% if current_sort == sort_field %}{% if current_direction == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                        </a>
+                    </th>
+                    {% endwith %}
+                    <th>Teléfono</th>
+                    <th>Género</th>
+                    {% with 'fecha_ingreso' as sort_field %}
+                    <th>
+                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}">
+                            Fecha Ingreso
+                            {% if current_sort == sort_field %}{% if current_direction == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                        </a>
+                    </th>
+                    {% endwith %}
+                    {% with 'estado_lead' as sort_field %}
+                    <th>
+                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}">
+                            Estado
+                            {% if current_sort == sort_field %}{% if current_direction == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                        </a>
+                    </th>
+                    {% endwith %}
+                     {% with 'id_usuario_atencion__nombre_usuario' as sort_field %}
+                    <th>
+                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}">
+                            Asesor
+                            {% if current_sort == sort_field %}{% if current_direction == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                        </a>
+                    </th>
+                    {% endwith %}
+                    {% with 'id_medio_contacto__nombre_medio' as sort_field %}
+                    <th>
+                        <a href="?sort={{ sort_field }}&direction={% if current_sort == sort_field and current_direction == 'asc' %}desc{% else %}asc{% endif %}">
+                            Canal
+                            {% if current_sort == sort_field %}{% if current_direction == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                        </a>
+                    </th>
+                    {% endwith %}
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lead in leads %}
+                <tr>
+                    <td>
+                        <a href="{% url 'gestion:detalle_lead' lead.id_lead %}">
+                            {{ lead.nombre_completo }}
+                        </a>
+                    </td>
+                    <td>{{ lead.telefono }}</td>
+                    <td>{{ lead.genero }}</td>
+                    <td>{{ lead.fecha_ingreso|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if lead.estado_lead == 'Convertido' %}
+                            <span class="badge text-bg-success">{{ lead.estado_lead }}</span>
+                        {% else %}
+                            <select class="form-select form-select-sm status-select" data-lead-id="{{ lead.id_lead }}" data-original-state="{{ lead.estado_lead }}">
+                                {% for value, name in lead.get_estado_lead_choices %}
+                                    {% if value != 'Convertido' %}
+                                        <option value="{{ value }}" {% if lead.estado_lead == value %}selected{% endif %}>{{ name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                    </td>
+                    <td>{{ lead.id_usuario_atencion.nombre_usuario }}</td>
+                    <td>{{ lead.id_medio_contacto.nombre_medio }}</td>
+                    <td>
+                        {% if lead.estado_lead != 'Convertido' %}
+                        <a href="{% url 'gestion:convertir_lead' lead.id_lead %}" class="btn btn-sm btn-info">Convertir a Cliente</a>
+                        {% else %}
+                        <span class="text-muted">Ya es cliente</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">No hay leads registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div id="alert-container" style="position: fixed; top: 80px; right: 20px; z-index: 1050;"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    function showAlert(message, type) {
+        const alertContainer = document.getElementById('alert-container');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.role = 'alert';
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        alertContainer.appendChild(alert);
+        setTimeout(() => alert.classList.remove('show'), 3000);
+    }
+
+    document.querySelectorAll('.status-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const leadId = this.dataset.leadId;
+            const nuevoEstado = this.value;
+            const url = `/gestion/leads/${leadId}/actualizar-estado/`;
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ estado: nuevoEstado })
+            })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok) {
+                    showAlert('Estado actualizado con éxito.', 'success');
+                    this.dataset.originalState = nuevoEstado; // Update original state on success
+                } else {
+                    showAlert(`Error: ${data.message}`, 'danger');
+                    this.value = this.dataset.originalState; // Revert to original state on failure
+                }
+            })
+            .catch(error => {
+                showAlert('Ocurrió un error de red.', 'danger');
+                console.error('Error:', error);
+                this.value = this.dataset.originalState; // Revert on network error
+            });
+        });
+    });
+});
+</script>
+{% endblock %} 

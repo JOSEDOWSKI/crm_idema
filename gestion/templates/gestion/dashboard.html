@@ -1,0 +1,172 @@
+{% extends 'gestion/base.html' %}
+{% load i18n %}
+
+{% block title %}Dashboard de Gestión{% endblock %}
+
+{% block content %}
+{{ leads_canal_data_json|json_script:"leads_canal_data" }}
+{{ conversiones_asesor_data_json|json_script:"conversiones_asesor_data" }}
+{{ ingresos_programa_data_json|json_script:"ingresos_programa_data" }}
+
+<div class="container-fluid mt-4">
+    <h2 class="mb-4">Dashboard</h2>
+
+    <!-- Fila de KPIs principales -->
+    <div class="row">
+        {% if rol_usuario == Roles.ADMIN or rol_usuario == Roles.ANALISTA %}
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">Total Leads</h5>
+                    <p class="card-text fs-4">{{ total_leads }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">Total Alumnos (Clientes)</h5>
+                    <p class="card-text fs-4">{{ total_alumnos }}</p>
+                </div>
+            </div>
+        </div>
+         <div class="col-md-3 mb-4">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">Leads de este Mes</h5>
+                    <p class="card-text fs-4">{{ leads_este_mes }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-secondary">
+                <div class="card-body">
+                    <h5 class="card-title">Clientes Nuevos del Mes</h5>
+                    <p class="card-text fs-4">{{ clientes_este_mes }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if rol_usuario == Roles.ADMIN %}
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h5 class="card-title">Monto Recaudado Total</h5>
+                    <p class="card-text fs-4">S/ {{ monto_recaudado|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">Tasa de Conversión</h5>
+                    <p class="card-text fs-4">{{ tasa_conversion|floatformat:2 }}%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4">
+            <div class="card text-white bg-dark">
+                <div class="card-body">
+                    <h5 class="card-title">Tasa de Retención</h5>
+                    <p class="card-text fs-4">{{ tasa_retencion|floatformat:2 }}%</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Fila de Tablas y Gráficos -->
+    <div class="row">
+        {% if rol_usuario == Roles.ADMIN or rol_usuario == Roles.MARKETING %}
+        <!-- Leads por Canal de Contacto -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Leads por Canal de Contacto</div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Canal</th><th>Nº Leads</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for canal in leads_por_canal %}
+                            <tr><td>{{ canal.nombre_medio }}</td><td>{{ canal.num_leads }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Programas más Populares por Interés -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Programas con Mayor Interés</div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Programa</th><th>Nº Interesados</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for programa in programas_populares %}
+                            <tr><td>{{ programa.nombre_programa }}</td><td>{{ programa.num_interesados }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if rol_usuario == Roles.ADMIN %}
+        <!-- Rendimiento de Asesores -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Rendimiento de Asesores (Ventas)</div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Asesor</th><th>Leads Totales</th><th>Conversiones</th><th>Tasa de Conversión</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for asesor in conversiones_por_asesor %}
+                            <tr>
+                                <td>{{ asesor.nombre_usuario }}</td>
+                                <td>{{ asesor.total_leads }}</td>
+                                <td>{{ asesor.conversiones_totales }}</td>
+                                <td>{{ asesor.tasa_conversion_final|floatformat:2 }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ingresos por Programa -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">Ingresos Totales por Programa</div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Programa</th><th>Monto Total Recaudado</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for programa in ingresos_por_programa %}
+                                {% if programa.total_recaudado > 0 %}
+                                <tr>
+                                    <td>{{ programa.nombre_programa }}</td>
+                                    <td>S/ {{ programa.total_recaudado|floatformat:2 }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 
