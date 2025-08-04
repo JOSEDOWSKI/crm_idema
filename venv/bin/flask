@@ -1,4 +1,4 @@
-#!/home/josedowski/Documentos/ucsp/reportes/venv/bin/python3
+#!/home/josedowski/Documentos/ucsp/antiguocrm/crm_idema/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -23,6 +23,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("gestion/", include("gestion.urls", namespace="gestion")),
+    path("accounts/login/", RedirectView.as_view(url='/gestion/login/', permanent=False)),
+    path("", RedirectView.as_view(url='/gestion/login/', permanent=False), name='home'),
 ]
 
 if settings.DEBUG:
