@@ -425,13 +425,29 @@ def convertir_lead_a_cliente(request, lead_id):
                     usuario.save()
 
                 # Crear Matrícula
-                Matricula.objects.create(
+                matricula = Matricula.objects.create(
                     id_cliente=cliente,
                     id_programa=programa,
                     id_modalidad=form.cleaned_data['modalidad'],
                     observacion=form.cleaned_data['observacion'],
-                    id_usuario_inscripcion=lead.id_usuario_atencion 
+                    id_usuario_inscripcion=lead.id_usuario_atencion
                 )
+
+                # --- INICIO DE LA CORRECCIÓN ---
+                # Si se incluyó una observación durante la conversión,
+                # se crea una entrada en el historial de la matrícula para que no se pierda.
+                if matricula.observacion and matricula.observacion.strip():
+                    try:
+                        # El usuario que registra es el que está logueado
+                        usuario_registra = request.user.usuario
+                        ObservacionMatricula.objects.create(
+                            id_matricula=matricula,
+                            id_usuario=usuario_registra,
+                            observacion=f"Observación inicial (de la conversión de lead a cliente):\n{matricula.observacion}"
+                        )
+                    except (AttributeError, Usuario.DoesNotExist):
+                        pass
+                # --- FIN DE LA CORRECCIÓN ---
 
                 # Actualizar estado del Lead
                 lead.estado_lead = 'Convertido'
@@ -470,8 +486,26 @@ def crear_lead(request):
             for programa in intereses:
                 LeadInteresPrograma.objects.create(id_lead=lead, id_programa=programa)
 
+            # --- INICIO DE LA CORRECCIÓN ---
+            # Si se incluyó una observación general en el formulario de creación,
+            # se crea una entrada en el historial de observaciones para que no se pierda.
+            if lead.observaciones and lead.observaciones.strip():
+                try:
+                    # El usuario que registra la observación es el que está logueado.
+                    usuario_registra = request.user.usuario
+                    ObservacionLead.objects.create(
+                        id_lead=lead,
+                        id_usuario=usuario_registra,
+                        observacion=f"Observación inicial (del formulario de creación):\n{lead.observaciones}"
+                    )
+                except (AttributeError, Usuario.DoesNotExist):
+                    # Fallback por si request.user.usuario no existe o no está bien configurado.
+                    # En una aplicación real, se podría registrar este evento.
+                    pass
+            # --- FIN DE LA CORRECCIÓN ---
+
             # Redirigir a una página de éxito o a la lista de leads
-            return redirect('gestion:listar_leads') # <-- Crearemos esta URL más adelante
+            return redirect('gestion:listar_leads')
     else:
         form = LeadForm()
 

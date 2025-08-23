@@ -148,14 +148,12 @@ class ObservacionMatriculaForm(forms.ModelForm):
 class MatriculaEditForm(forms.ModelForm):
     class Meta:
         model = Matricula
-        fields = ['estado', 'observacion']
+        fields = ['estado']
         widgets = {
             'estado': forms.Select(attrs={'class': 'form-control'}),
-            'observacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
         labels = {
             'estado': 'Estado de la Matrícula',
-            'observacion': 'Observaciones',
         }
 
 class NotaForm(forms.ModelForm):
