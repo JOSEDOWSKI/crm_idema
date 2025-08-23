@@ -19,7 +19,7 @@ def rol_requerido(roles_permitidos=[]):
 
             try:
                 # Comprobamos si el usuario tiene un perfil de Usuario
-                if hasattr(request.user, 'usuario') and request.user.usuario.rol in roles_permitidos:
+                if hasattr(request.user, 'usuario') and request.user.usuario.rol.nombre in roles_permitidos:
                     return view_func(request, *args, **kwargs)
             except AttributeError:
                 # El usuario no tiene un perfil de Usuario asociado

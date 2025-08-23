@@ -4,12 +4,12 @@ from django.db import migrations
 
 def poblar_datos(apps, schema_editor):
     # --- Asesores (Usuarios) ---
-    Usuario = apps.get_model('gestion', 'Usuario')
-    Usuario.objects.bulk_create([
-        Usuario(nombre_usuario='Alesandra', rol='Asesor'),
-        Usuario(nombre_usuario='Malu', rol='Asesor'),
-        Usuario(nombre_usuario='Dayana', rol='Asesor'),
-    ])
+    # Usuario = apps.get_model('gestion', 'Usuario')
+    # Usuario.objects.bulk_create([
+    #     Usuario(nombre_usuario='Alesandra', rol='Asesor'),
+    #     Usuario(nombre_usuario='Malu', rol='Asesor'),
+    #     Usuario(nombre_usuario='Dayana', rol='Asesor'),
+    # ])
 
     # --- Medios de Contacto ---
     MedioContacto = apps.get_model('gestion', 'MedioContacto')

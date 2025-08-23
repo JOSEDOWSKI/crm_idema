@@ -204,7 +204,7 @@ class EmpleadoForm(forms.ModelForm):
             'nombres', 'apellidos', 'dni', 'fecha_nacimiento', 
             'direccion', 'telefono', 'email', 'banco', 'cuenta_bancaria', 'cci',
             'cargo', 'fecha_ingreso', 'tipo_contrato', 'sede',
-            'horas_contrato', 'sueldo_basico', 'sueldo_por_hora',
+            'horas_contrato', 'sueldo_basico', 'tasa_afp', 'sueldo_por_hora',
             'horas_extras', 'inasistencias', 'comisiones', 'bonos', 'descuentos'
         ]
         widgets = {
@@ -231,6 +231,7 @@ class EmpleadoForm(forms.ModelForm):
             'sede': forms.Select(attrs={'class': 'form-control'}),
             'horas_contrato': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5'}),
             'sueldo_basico': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'tasa_afp': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
             'sueldo_por_hora': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'horas_extras': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5'}),
             'inasistencias': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5'}),
@@ -255,6 +256,7 @@ class EmpleadoForm(forms.ModelForm):
             'sede': 'Sede',
             'horas_contrato': 'Horas según Contrato',
             'sueldo_basico': 'Sueldo Básico (S/)',
+            'tasa_afp': 'Tasa AFP (ej: 0.125)',
             'sueldo_por_hora': 'Sueldo por Hora (S/)',
             'horas_extras': 'Horas Extras',
             'inasistencias': 'Inasistencias (horas)',
@@ -287,7 +289,10 @@ class EmpleadoForm(forms.ModelForm):
         return empleado
 
     def calcular_remuneracion(self, empleado):
-        """Calcula automáticamente la remuneración bruta y neta"""
+        """
+        Calcula automáticamente la remuneración bruta, neta y el aporte del empleador.
+        NOTA: Este es un cálculo simplificado y no incluye el Impuesto a la Renta.
+        """
         sueldo_basico = empleado.sueldo_basico or Decimal('0')
         sueldo_por_hora = empleado.sueldo_por_hora or Decimal('0')
         horas_extras = empleado.horas_extras or Decimal('0')
@@ -295,36 +300,32 @@ class EmpleadoForm(forms.ModelForm):
         comisiones = empleado.comisiones or Decimal('0')
         bonos = empleado.bonos or Decimal('0')
         descuentos = empleado.descuentos or Decimal('0')
+        tasa_afp = empleado.tasa_afp or Decimal('0.10')
 
-        # Calcular remuneración bruta
+        # 1. Calcular remuneración bruta
         remuneracion_bruta = sueldo_basico
-        
-        # Agregar pago por horas extras
-        if sueldo_por_hora > 0 and horas_extras > 0:
+        if sueldo_por_hora > 0:
             remuneracion_bruta += (sueldo_por_hora * horas_extras * Decimal('1.5'))
-        
-        # Descontar inasistencias
-        if sueldo_por_hora > 0 and inasistencias > 0:
             remuneracion_bruta -= (sueldo_por_hora * inasistencias)
-        
-        # Agregar comisiones y bonos
         remuneracion_bruta += comisiones + bonos
         
-        # Calcular descuentos legales
-        descuento_afp = sueldo_basico * Decimal('0.10')  # AFP 10%
-        descuento_salud = sueldo_basico * Decimal('0.09')  # Seguro 9%
-        total_descuentos = descuento_afp + descuento_salud + descuentos
+        # 2. Calcular descuentos del empleado
+        descuento_afp = sueldo_basico * tasa_afp
+        total_descuentos = descuento_afp + descuentos
         
-        # Calcular neto
+        # 3. Calcular neto a pagar al empleado
         neto_mensual = remuneracion_bruta - total_descuentos
         neto_quincenal = neto_mensual / Decimal('2')
-        aporte_empleador = sueldo_basico * Decimal('0.20')  # 20% empleador
         
-        # Asignar valores
-        empleado.remuneracion_bruta = remuneracion_bruta
-        empleado.neto_mensual = neto_mensual
-        empleado.neto_quincenal = neto_quincenal
-        empleado.aporte_empleador = aporte_empleador
+        # 4. Calcular aportes del empleador (no se descuentan del empleado)
+        # El principal aporte del empleador es EsSalud (9% del sueldo básico)
+        aporte_essalud = sueldo_basico * Decimal('0.09')
+
+        # Asignar valores calculados al objeto empleado
+        empleado.remuneracion_bruta = round(remuneracion_bruta, 2)
+        empleado.neto_mensual = round(neto_mensual, 2)
+        empleado.neto_quincenal = round(neto_quincenal, 2)
+        empleado.aporte_empleador = round(aporte_essalud, 2)
         
         return empleado
 

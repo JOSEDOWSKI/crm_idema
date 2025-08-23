@@ -453,6 +453,7 @@ class Empleado(models.Model):
     tipo_contrato = models.CharField(max_length=100, blank=True)
     horas_contrato = models.DecimalField(max_digits=5, decimal_places=2, default=0.0, verbose_name="Horas según contrato")
     sueldo_basico = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    tasa_afp = models.DecimalField(max_digits=5, decimal_places=4, default=0.10, verbose_name="Tasa AFP (ej: 0.125)")
     sueldo_por_hora = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     horas_extras = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
     inasistencias = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
