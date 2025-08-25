@@ -1,45 +1,35 @@
 # Arquitectura del Frontend - SGUL
 
-## 1. Stack Tecnológico Actual
+## 1. Stack Tecnológico
 
-El frontend del proyecto SGUL está construido con un enfoque tradicional de Django, directamente integrado con el backend.
+El frontend se construirá con un enfoque que prioriza la eficiencia, la mantenibilidad y una experiencia de usuario moderna.
 
-*   **Lenguaje de Plantillas:** **Django Templates (HTML)**. La lógica de renderizado y el HTML se gestionan a través del sistema de plantillas de Django.
-*   **Estilos:** **CSS plano**. Los estilos se escriben en archivos `.css` estándar.
-*   **Interactividad:** **JavaScript plano (vanilla)**. Se utiliza para añadir funcionalidades dinámicas en el lado del cliente.
+*   **Framework Principal:** Aunque el backend usa Django, el frontend se desarrollará con un enfoque desacoplado o híbrido.
+*   **Lenguaje:** **JavaScript (ES6+)** o **TypeScript** para un código más robusto y escalable.
+*   **Estilos:** **Sass** o **CSS Modules** para escribir CSS modular y organizado.
+*   **Proceso de Build:** **Vite** o **Webpack** se utilizarán como empaquetadores de activos para optimizar, minificar y empaquetar el código CSS y JavaScript.
 
 ## 2. Estructura de Archivos
 
-*   **Plantillas HTML:** Se encuentran en `gestion/templates/gestion/`. Cada vista de Django tiene asociada una plantilla HTML.
-*   **Archivos Estáticos:** Se encuentran en `gestion/static/gestion/`.
-    *   `*.css`: Contiene los estilos de la aplicación.
-    *   `*.js`: Contiene la lógica de JavaScript.
+*   **Plantillas HTML Base:** Las plantillas principales de Django (`base.html`) servirán como punto de entrada para los activos compilados.
+*   **Código Fuente del Frontend:** Se creará un nuevo directorio `frontend/` en la raíz del proyecto para alojar todo el código fuente de JavaScript y Sass, separado de la lógica de Django.
 
-## 3. Lógica de Frontend Destacada
+## 3. Principios de Arquitectura y Diseño
 
-La funcionalidad más compleja del frontend actual es el **cálculo de la planilla en tiempo real** en el formulario de creación/edición de empleados. Se utiliza JavaScript para escuchar los cambios en los campos de entrada (sueldo básico, bonos, horas extra, etc.) y actualizar los campos de "Remuneración Bruta" y "Neto Mensual" sin necesidad de recargar la página.
+El frontend se desarrollará siguiendo estos principios clave:
 
-**Observación Importante:** Esta lógica de cálculo está **duplicada**. Existe una versión en JavaScript para la interactividad y otra en Python (`EmpleadoForm`) para el guardado y la validación en el backend.
+### 1. Lógica Centralizada en el Backend
+*   **Principio:** El frontend no duplicará la lógica de negocio. Será un consumidor de la lógica expuesta por el backend a través de una API.
+*   **Implementación:** Para funcionalidades con cálculos complejos, como la planilla de empleados, el frontend no contendrá la fórmula. En su lugar, enviará los datos de entrada al endpoint `/api/payroll/calculate/` del backend y mostrará el resultado devuelto. Esto asegura una **única fuente de verdad** para la lógica de negocio.
 
-## 4. Propuesta de Mejoras para Reconstrucción
+### 2. Experiencia de Usuario Dinámica (SPA/Híbrida)
+*   **Principio:** La interacción del usuario será fluida y rápida, minimizando las recargas de página completas.
+*   **Implementación:** Se utilizará la **API Fetch** de JavaScript (AJAX) para las operaciones CRUD (Crear, Leer, Actualizar, Borrar). Por ejemplo:
+    *   Al añadir una nueva observación a un lead, se enviarán los datos al backend en segundo plano y la nueva observación se añadirá a la lista en la interfaz de forma instantánea.
+    *   Los formularios se procesarán de forma asíncrona, mostrando mensajes de éxito o error sin necesidad de una redirección.
 
-Para modernizar el frontend, hacerlo más mantenible y mejorar la experiencia de usuario, se recomiendan las siguientes mejoras.
+### 3. Rendimiento Optimizado
+*   **Principio:** Los tiempos de carga de la aplicación serán mínimos.
+*   **Implementación:** Todo el código CSS y JavaScript pasará por un proceso de **build** (usando Vite/Webpack) que lo optimizará para producción. Esto incluye minificación, tree-shaking y empaquetado (bundling).
 
-### 1. Centralizar la Lógica de Cálculo con una API
-*   **Problema:** La duplicación de la lógica de cálculo de la planilla entre el frontend y el backend es una fuente potencial de errores.
-*   **Solución:** Crear un endpoint en la API del backend (ej. `/api/payroll/calculate/`) que se encargue del cálculo. El frontend solo necesitaría enviar los datos de entrada a esta API mediante una petición `fetch` y mostrar el resultado devuelto. Esto asegura que la fórmula de cálculo resida en un único lugar (el backend).
-
-### 2. Integrar un Proceso de Build Moderno
-*   **Problema:** Servir archivos CSS y JS sin optimizar afecta negativamente el rendimiento y los tiempos de carga.
-*   **Solución:** Adoptar un empaquetador de JavaScript/CSS como **Vite** o **Webpack**. Estas herramientas permiten:
-    *   **Minificar** los archivos, reduciendo su tamaño.
-    *   **Empaquetarlos (bundling)** en menos archivos para reducir el número de peticiones al servidor.
-    *   Utilizar herramientas modernas como **Sass** para un CSS más organizado.
-
-### 3. Mejorar la Experiencia de Usuario (UX) con AJAX
-*   **Problema:** La aplicación requiere recargas de página completas para la mayoría de las acciones.
-*   **Solución:** Utilizar la **API Fetch** de JavaScript (AJAX) para crear interacciones más fluidas y dinámicas. Por ejemplo:
-    *   Al añadir una nueva observación a un lead, la observación debería aparecer en la lista instantáneamente sin recargar la página.
-    *   Los formularios podrían enviar sus datos en segundo plano y mostrar mensajes de éxito o error sin una redirección completa.
-
-Estas mejoras transformarían la aplicación de un sitio web tradicional a una **Aplicación de Página Única (SPA)** o una **Aplicación Híbrida**, mucho más rápida y agradable para el usuario.
+Siguiendo estos principios, el resultado será una aplicación web que se siente como una **Aplicación de Página Única (SPA)** o una **Aplicación Híbrida**, en lugar de un sitio web tradicional, ofreciendo una experiencia de usuario superior.

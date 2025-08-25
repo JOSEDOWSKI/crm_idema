@@ -33,11 +33,21 @@ La inteligencia del sistema se concentra en los métodos `save()` de los modelos
 *   **Cálculo de Planilla:** La lógica reside en `EmpleadoForm.calcular_remuneracion()`. Calcula el sueldo neto y los aportes del empleador basándose en el sueldo básico, bonos, descuentos y la tasa de AFP configurable por empleado.
 *   **Seguridad (RBAC):** Las vistas en `gestion/views.py` están protegidas por decoradores personalizados (`@require_permiso_personalizado`) que verifican los permisos del usuario antes de permitir el acceso.
 
-## 4. Puntos a Mejorar (Deuda Técnica)
+## 4. Principios de Diseño y Arquitectura a Futuro
 
-*   **Lógica de Negocio en Scripts:** La asignación de empleados a sedes es un script manual. Una mejora sería hacer esta regla configurable en el panel de admin (ej. un campo "Sede por defecto" en el modelo `RolEmpleado`).
-*   **Precisión de Planilla:** El cálculo de planilla es una buena aproximación, pero para un uso en producción en Perú, necesita ser expandido para incluir el **Impuesto a la Renta de 5ta Categoría** y un modelo más detallado de las **comisiones de las AFP**.
-*   **Uso de SQL Directo:** Algunas vistas complejas usan SQL directo. Se recomienda refactorizar estas consultas para usar el **ORM de Django** con `select_related` y `prefetch_related` para mejorar la mantenibilidad y seguridad.
+Para asegurar un sistema robusto y escalable, el desarrollo se guiará por los siguientes principios:
+
+*   **Lógica de Negocio Configurable:**
+    *   Toda regla de negocio que pueda cambiar con el tiempo será configurable desde el panel de administración, no escrita en el código.
+    *   **Ejemplo:** La asignación de una sede por defecto a un rol se gestionará con un campo `sede_defecto` en el modelo `RolEmpleado`, eliminando la necesidad de scripts manuales.
+
+*   **Precisión en la Lógica de Dominio:**
+    *   Los cálculos que representan procesos del mundo real, como la planilla, se modelarán con alta fidelidad.
+    *   **Ejemplo:** El sistema de planilla incluirá el cálculo del **Impuesto a la Renta de 5ta Categoría** y modelará las diferentes **comisiones de las AFP** para reflejar la realidad del mercado peruano.
+
+*   **Abstracción de la Base de Datos (ORM):**
+    *   Se priorizará el uso del **ORM de Django** sobre las consultas SQL directas para todas las interacciones con la base de datos.
+    *   **Ejemplo:** Las vistas complejas se optimizarán usando `select_related` y `prefetch_related` para garantizar la mantenibilidad, seguridad y legibilidad del código.
 
 ## 5. Scripts de Utilidad
 
