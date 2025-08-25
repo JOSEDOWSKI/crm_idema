@@ -154,3 +154,49 @@ Configurar un sistema completo de gestión universitaria con asignación automá
 **Estado**: ✅ Sistema completamente funcional
 **Fecha**: $(date)
 **Versión**: 2.0 - Sistema Multi-Sede
+
+---
+
+## 🏛️ Propuesta de Arquitectura y Mejoras para Reconstrucción
+
+Esta sección detalla una serie de mejoras y decisiones de arquitectura recomendadas para una futura versión del sistema, con el objetivo de aumentar su robustez, escalabilidad y facilidad de mantenimiento.
+
+### Backend
+
+El backend debe ser el núcleo de la lógica de negocio, asegurando que los datos sean siempre consistentes.
+
+#### 1. Centralizar la Lógica de Negocio
+*   **Problema a Evitar:** Lógica de negocio "hardcodeada" o fija en el código (ej. reglas de asignación de sedes en un script).
+*   **Solución Propuesta:**
+    *   **Reglas Configurables:** Las reglas de negocio importantes deben ser manejables desde el panel de administración. Por ejemplo, en el modelo `RolEmpleado`, se debe añadir un campo `sede_defecto` para que un administrador pueda asignar la sede por defecto para cada rol sin necesidad de modificar el código.
+
+#### 2. Precisión en la Lógica de Dominio (Planilla)
+*   **Problema a Evitar:** Simplificación excesiva de cálculos complejos como la planilla peruana.
+*   **Solución Propuesta:**
+    *   **Implementar Impuesto a la Renta:** El cálculo de la planilla debe incluir la "Renta de Quinta Categoría".
+    *   **Modelar Entidades del Mundo Real:** El sistema de AFP real es más complejo que una tasa única. Una mejora a largo plazo sería crear modelos para las distintas AFP y sus comisiones variables. La tasa de AFP debe ser configurable por empleado.
+    *   **Cálculos Correctos:** El seguro de salud (EsSalud) debe ser tratado como un aporte del empleador, no como un descuento al empleado.
+
+#### 3. Optimización y Mantenibilidad de la Base de Datos
+*   **Problema a Evitar:** Uso de consultas SQL directas, que pueden ser difíciles de mantener y omiten las optimizaciones del ORM.
+*   **Solución Propuesta:**
+    *   **Priorizar el ORM de Django:** Todas las consultas a la base de datos deben realizarse a través del ORM de Django. Utilizar `select_related` y `prefetch_related` para optimizar las consultas complejas y evitar el problema N+1.
+
+### Frontend
+
+El frontend debe ser moderno, rápido y fácil de usar para los desarrolladores y los usuarios finales.
+
+#### 1. Centralizar la Lógica de Cálculo
+*   **Problema a Evitar:** Duplicación de lógica entre el frontend (JavaScript) y el backend (Python), como en el cálculo de la planilla.
+*   **Solución Propuesta:**
+    *   **API para Cálculos:** Crear un endpoint en la API del backend dedicado a los cálculos complejos. El frontend le enviará los datos de entrada (ej. sueldo, bonos) y simplemente mostrará el resultado que recibe. Esto asegura que la lógica de cálculo vive en un único lugar.
+
+#### 2. Modernizar el Proceso de Build
+*   **Problema a Evitar:** Servir archivos CSS y JavaScript sin optimizar.
+*   **Solución Propuesta:**
+    *   **Integrar un Empaquetador (Bundler):** Utilizar una herramienta moderna como **Vite** o **Webpack** para optimizar (minificar, empaquetar) los archivos CSS y JS. Esto mejora drásticamente los tiempos de carga y el rendimiento de la aplicación.
+
+#### 3. Mejorar la Experiencia de Usuario (UX) con Interacciones Dinámicas
+*   **Problema a Evitar:** La página se recarga completamente para cada acción.
+*   **Solución Propuesta:**
+    *   **Uso de AJAX/Fetch API:** Implementar actualizaciones parciales de la página. Por ejemplo, al añadir una nueva observación, esta debe aparecer en la lista dinámicamente sin necesidad de recargar la página entera. Esto se logra con JavaScript, haciendo que la aplicación se sienta más rápida y moderna.
