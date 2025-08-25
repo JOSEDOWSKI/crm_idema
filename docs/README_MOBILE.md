@@ -1,67 +1,35 @@
-# Propuesta para Aplicación Móvil - SGUL
+# Arquitectura de la Aplicación Móvil - SGUL
 
-## 1. Objetivo General
+## 1. Stack Tecnológico
 
-Desarrollar una aplicación móvil nativa para iOS y Android que ofrezca a los estudiantes una experiencia fluida y directa para interactuar con los servicios académicos y administrativos de la institución, mejorando la comunicación y el acceso a la información.
+Para optimizar el tiempo de desarrollo y mantener una base de código unificada, la aplicación móvil se desarrollará como una **aplicación multiplataforma**.
 
-## 2. Stack Tecnológico Propuesto
+*   **Framework:** React Native
+*   **Plataforma de Desarrollo:** Expo para simplificar el proceso de build y despliegue en iOS y Android.
+*   **Lenguaje:** TypeScript
+*   **Comunicación API:** Axios o la Fetch API nativa para consumir la misma API REST del backend de Django que utiliza el frontend web.
 
-Para garantizar el mejor rendimiento, experiencia de usuario y acceso a las funcionalidades nativas de cada plataforma, se propone el siguiente stack:
+## 2. Arquitectura General
 
-*   **iOS:**
-    *   **Lenguaje:** Swift
-    *   **UI Framework:** SwiftUI
-*   **Android:**
-    *   **Lenguaje:** Kotlin
-    *   **UI Framework:** Jetpack Compose
-*   **Comunicación con Backend:**
-    *   La aplicación móvil consumirá una **API REST** que deberá ser construida en el backend de Django. Esta API será la única fuente de verdad para la aplicación.
+La aplicación móvil será un cliente puro de la API del backend. Al compartir la misma API que el frontend web, se reutiliza toda la lógica de negocio y se asegura la consistencia de los datos.
 
-## 3. Funcionalidades
+*   **Navegación:** Se utilizará `React Navigation` para gestionar las pantallas y la navegación dentro de la aplicación.
+*   **Componentes Nativos:** React Native renderizará componentes 100% nativos de iOS y Android, garantizando una experiencia de usuario fluida y familiar en cada plataforma.
+*   **Acceso a Funcionalidades Nativas:** A través de Expo y las librerías de React Native, la aplicación tendrá acceso a funcionalidades del dispositivo como notificaciones push, cámara, etc.
 
-El desarrollo se puede planificar en dos fases principales.
+## 3. Funcionalidades Clave
 
-### Fase 1: Consulta de Información Académica
-
-El objetivo de esta fase es dar al alumno acceso de solo lectura a su información más importante.
-
-*   **Autenticación:** Login de usuario y contraseña para estudiantes.
-*   **Dashboard del Estudiante:** Una pantalla principal que resuma la información más relevante.
-*   **Mis Notas:** Vista para consultar las calificaciones obtenidas en cada curso y periodo.
-*   **Mi Asistencia:** Vista para consultar el historial de asistencias a clases.
-*   **Mi Horario:** Visualización de la malla curricular y los cursos correspondientes a su ciclo actual.
-*   **Mis Pagos:** Historial de los pagos de matrícula y pensiones realizados.
-
-### Fase 2: Notificaciones y Trámites (Funcionalidad Interactiva)
-
-Esta fase se centra en la comunicación bidireccional y en la gestión de servicios.
-
+*   **Autenticación:** Login seguro contra la API del backend.
+*   **Consulta de Información:** Acceso a notas, asistencias, horarios y pagos.
 *   **Notificaciones Push:**
-    *   **Requerimiento Backend:** Integrar un servicio como **Firebase Cloud Messaging (FCM)** en el backend de Django.
-    *   **Casos de Uso:**
-        *   Anuncios generales de la institución.
-        *   Notificación de una nueva calificación publicada.
-        *   Recordatorios de pagos de pensión.
-        *   Alertas sobre inasistencias.
-        *   Confirmación de trámites iniciados o completados.
-
+    *   **Implementación:** Se utilizará el servicio de **Expo Push Notifications**, que simplifica la integración con Firebase Cloud Messaging (FCM) para Android y Apple Push Notification service (APNs) para iOS.
+    *   **Flujo:** El backend enviará las notificaciones a los servidores de Expo, y estos se encargarán de entregarlas a los dispositivos correspondientes.
 *   **Gestión de Trámites:**
-    *   **Requerimiento Backend:** Desarrollar nuevos modelos y vistas en Django para definir y gestionar diferentes tipos de trámites (ej. `Solicitud`, `EstadoTramite`).
-    *   **Flujo de Usuario:**
-        1.  El estudiante selecciona un tipo de trámite desde la app (ej. "Solicitar Constancia de Estudios").
-        2.  Rellena un formulario simple y lo envía.
-        3.  Puede ver una lista de sus trámites y el estado actual de cada uno ("Recibido", "En Proceso", "Listo para Recoger", "Rechazado").
-        4.  Recibe una notificación push cuando el estado de su trámite cambia.
+    *   Los estudiantes podrán iniciar y dar seguimiento a trámites administrativos directamente desde la app.
+    *   La app consumirá los endpoints `/api/procedures/` que expondrá el backend para esta funcionalidad.
 
-## 4. Requisitos de la API Backend
+## 4. Ventajas del Enfoque Multiplataforma
 
-Para que la aplicación móvil funcione, el backend de Django deberá exponer una serie de endpoints RESTful, por ejemplo:
-
-*   `POST /api/auth/token/`: Para el login de usuarios.
-*   `GET /api/student/profile/`: Devuelve los datos del perfil del estudiante.
-*   `GET /api/student/grades/`: Devuelve las notas del estudiante.
-*   `GET /api/student/attendance/`: Devuelve las asistencias del estudiante.
-*   `POST /api/student/device/`: Registra el token del dispositivo para las notificaciones push.
-*   `GET /api/procedures/`: Lista los trámites disponibles.
-*   `POST /api/procedures/submit/`: Para que el estudiante inicie un nuevo trámite.
-*   `GET /api/procedures/status/`: Para consultar el estado de sus trámites.
+*   **Base de Código Única:** Se escribe el código una vez en JavaScript/TypeScript y funciona tanto en iOS como en Android.
+*   **Desarrollo Rápido:** El desarrollo es más rápido y económico que mantener dos equipos y dos bases de código nativas separadas.
+*   **Consistencia:** Se reutiliza el 100% de la lógica del backend, garantizando que los datos y las reglas de negocio sean siempre los mismos en la web y en el móvil.

@@ -2,34 +2,54 @@
 
 ## 1. Stack Tecnológico
 
-El frontend se construirá con un enfoque que prioriza la eficiencia, la mantenibilidad y una experiencia de usuario moderna.
+El frontend será una **Single-Page Application (SPA)** moderna, completamente desacoplada del backend.
 
-*   **Framework Principal:** Aunque el backend usa Django, el frontend se desarrollará con un enfoque desacoplado o híbrido.
-*   **Lenguaje:** **JavaScript (ES6+)** o **TypeScript** para un código más robusto y escalable.
-*   **Estilos:** **Sass** o **CSS Modules** para escribir CSS modular y organizado.
-*   **Proceso de Build:** **Vite** o **Webpack** se utilizarán como empaquetadores de activos para optimizar, minificar y empaquetar el código CSS y JavaScript.
+*   **Framework:** React.js (v18+)
+*   **Lenguaje:** TypeScript
+*   **Herramienta de Build:** Vite
+*   **Estilos:** Tailwind CSS para un desarrollo de UI rápido y consistente.
+*   **Gestión de Estado:** Redux Toolkit o Zustand (a definir) para manejar el estado global de la aplicación.
+*   **Comunicación API:** Axios o la Fetch API nativa para comunicarse con el backend de Django Rest Framework.
 
-## 2. Estructura de Archivos
+## 2. Arquitectura General
 
-*   **Plantillas HTML Base:** Las plantillas principales de Django (`base.html`) servirán como punto de entrada para los activos compilados.
-*   **Código Fuente del Frontend:** Se creará un nuevo directorio `frontend/` en la raíz del proyecto para alojar todo el código fuente de JavaScript y Sass, separado de la lógica de Django.
+El frontend es un cliente puro que consume la API del backend. Su única responsabilidad es la presentación y la experiencia de usuario. No contiene lógica de negocio.
 
-## 3. Principios de Arquitectura y Diseño
+*   **Enrutamiento:** Se utilizará `react-router-dom` para gestionar las rutas del lado del cliente (ej. `/leads`, `/dashboard`).
+*   **Componentes:** La UI se construirá con una arquitectura de componentes reutilizables (ej. botones, tablas, modales).
+*   **Autenticación:** Gestionará tokens de autenticación (ej. JWT) obtenidos de la API del backend para asegurar las rutas y las peticiones.
 
-El frontend se desarrollará siguiendo estos principios clave:
+## 3. Flujo de Datos Típico
 
-### 1. Lógica Centralizada en el Backend
-*   **Principio:** El frontend no duplicará la lógica de negocio. Será un consumidor de la lógica expuesta por el backend a través de una API.
-*   **Implementación:** Para funcionalidades con cálculos complejos, como la planilla de empleados, el frontend no contendrá la fórmula. En su lugar, enviará los datos de entrada al endpoint `/api/payroll/calculate/` del backend y mostrará el resultado devuelto. Esto asegura una **única fuente de verdad** para la lógica de negocio.
+1.  El usuario navega a una ruta (ej. `/leads`).
+2.  El componente de React correspondiente se renderiza.
+3.  Se utiliza un hook (`useEffect`) para disparar una petición a la API del backend (`GET /api/leads/`).
+4.  La respuesta de la API se guarda en el estado global de la aplicación.
+5.  La interfaz se actualiza para mostrar los datos obtenidos.
 
-### 2. Experiencia de Usuario Dinámica (SPA/Híbrida)
-*   **Principio:** La interacción del usuario será fluida y rápida, minimizando las recargas de página completas.
-*   **Implementación:** Se utilizará la **API Fetch** de JavaScript (AJAX) para las operaciones CRUD (Crear, Leer, Actualizar, Borrar). Por ejemplo:
-    *   Al añadir una nueva observación a un lead, se enviarán los datos al backend en segundo plano y la nueva observación se añadirá a la lista en la interfaz de forma instantánea.
-    *   Los formularios se procesarán de forma asíncrona, mostrando mensajes de éxito o error sin necesidad de una redirección.
+## 4. Estructura de Directorios (Propuesta)
 
-### 3. Rendimiento Optimizado
-*   **Principio:** Los tiempos de carga de la aplicación serán mínimos.
-*   **Implementación:** Todo el código CSS y JavaScript pasará por un proceso de **build** (usando Vite/Webpack) que lo optimizará para producción. Esto incluye minificación, tree-shaking y empaquetado (bundling).
+```
+frontend/
+├── public/
+│   └── ... # Archivos estáticos públicos
+├── src/
+│   ├── api/          # Lógica para comunicarse con el backend
+│   ├── components/   # Componentes reutilizables de UI
+│   ├── features/     # Lógica y componentes por funcionalidad (leads, finanzas)
+│   ├── hooks/        # Hooks personalizados de React
+│   ├── pages/        # Componentes que representan páginas completas
+│   ├── store/        # Configuración del estado global (Redux/Zustand)
+│   ├── App.tsx       # Componente raíz
+│   └── main.tsx      # Punto de entrada de la aplicación
+├── .eslintrc.cjs
+├── package.json
+├── tailwind.config.js
+└── vite.config.ts
+```
 
-Siguiendo estos principios, el resultado será una aplicación web que se siente como una **Aplicación de Página Única (SPA)** o una **Aplicación Híbrida**, en lugar de un sitio web tradicional, ofreciendo una experiencia de usuario superior.
+## 5. Configuración y Despliegue (Docker)
+
+El frontend se ejecutará en su propio contenedor de Docker, gestionado por Docker Compose.
+*   **Desarrollo:** El contenedor utilizará el servidor de desarrollo de Vite con Hot-Module Replacement (HMR) para una experiencia de desarrollo instantánea.
+*   **Producción:** El Dockerfile construirá una versión optimizada y estática de la aplicación (usando `npm run build`) y la servirá con un servidor web ligero como Nginx.

@@ -3,56 +3,54 @@
 ## 1. Stack Tecnológico
 
 *   **Lenguaje:** Python 3.10+
-*   **Framework:** Django 5.0+
-*   **Base de Datos (Producción):** PostgreSQL
-*   **Base de Datos (Desarrollo):** SQLite 3
-*   **Servidor de Aplicaciones (Producción):** Gunicorn
+*   **Framework:** Django 5.0+ y Django Rest Framework (DRF)
+*   **Base de Datos:** PostgreSQL
+*   **Tareas Asincrónicas:** Celery con Redis o RabbitMQ como message broker.
+*   **Servidor de Aplicaciones:** Gunicorn
+*   **Contenerización:** Docker y Docker Compose
 
-## 2. Entidades Principales (Modelos)
+## 2. Arquitectura General
 
-El núcleo del sistema reside en `gestion/models.py`. Las entidades más importantes son:
+El backend está diseñado bajo una arquitectura **headless**, lo que significa que su única responsabilidad es exponer una **API RESTful** segura y eficiente. No renderiza plantillas HTML directamente. Toda la lógica de negocio, validaciones y automatizaciones residen aquí, sirviendo como la única fuente de verdad para todos los clientes (frontend web, aplicación móvil, etc.).
 
-*   **`Sede`**: Representa un campus (físico o virtual). Es la clave para la contabilidad por separado.
-*   **`RolEmpleado` y `PermisoPersonalizado`**: Implementan un sistema de control de acceso (RBAC). Los permisos se definen como códigos (ej. `crear_lead`) y se asignan a roles.
-*   **`Usuario`**: Modelo personalizado que se vincula al `User` de Django y a un `RolEmpleado`. Permite sobreescribir permisos a nivel de usuario.
-*   **`Empleado`**: Contiene la información de RRHH y de planilla del personal. Se vincula a un `Usuario` y a una `Sede`.
-*   **`Lead`**: Prospectos o clientes potenciales.
-*   **`Cliente`**: Leads que han sido convertidos.
-*   **`Matricula`**: Representa la inscripción de un `Cliente` a un `ProgramaAcademico`.
-*   **`Pago`**: Registra los pagos de una `Matricula`.
-*   **`Ingreso` y `Gasto`**: Registros contables generados a partir de `Pago` y `PlanillaEmpleado`, respectivamente. Se asocian a una `Sede`.
-*   **`PlanillaEmpleado`**: Representa el pago de un sueldo a un `Empleado` en un mes/año específico.
+## 3. Entidades y Serializers
 
-## 3. Lógica de Negocio y Automatizaciones
+Los modelos de Django (`gestion/models.py`) definen la estructura de la base de datos. Para cada modelo principal, se creará un **Serializer** de DRF que controlará la representación JSON de los datos en la API.
 
-La inteligencia del sistema se concentra en los métodos `save()` de los modelos y en los formularios.
+*   **Ejemplo de Serializer (`LeadSerializer`):**
+    ```python
+    class LeadSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Lead
+            fields = ['id_lead', 'nombre_completo', 'telefono', 'estado_lead', 'fecha_ingreso']
+    ```
 
-*   **Observaciones Unificadas:** Al crear un `Lead` o `Matricula`, las observaciones iniciales se mueven a un modelo de historial (`ObservacionLead`, `ObservacionMatricula`) para que no se pierda información.
-*   **Contabilidad Automática (Ingresos):** El método `Pago.save()` llama a `crear_ingreso_automatico()`, que genera un registro de `Ingreso` y lo atribuye a la sede correcta según la modalidad de la matrícula.
-*   **Contabilidad Automática (Gastos):** El método `PlanillaEmpleado.save()` crea un registro de `Gasto` por el sueldo neto y lo atribuye a la sede a la que pertenece el empleado.
-*   **Cálculo de Planilla:** La lógica reside en `EmpleadoForm.calcular_remuneracion()`. Calcula el sueldo neto y los aportes del empleador basándose en el sueldo básico, bonos, descuentos y la tasa de AFP configurable por empleado.
-*   **Seguridad (RBAC):** Las vistas en `gestion/views.py` están protegidas por decoradores personalizados (`@require_permiso_personalizado`) que verifican los permisos del usuario antes de permitir el acceso.
+## 4. Endpoints Principales de la API
 
-## 4. Principios de Diseño y Arquitectura a Futuro
+La API se estructurará por recursos. A continuación, algunos ejemplos de endpoints clave:
 
-Para asegurar un sistema robusto y escalable, el desarrollo se guiará por los siguientes principios:
+*   `POST /api/token/`: Obtiene un token de autenticación (ej. JWT).
+*   `GET, POST /api/leads/`: Lista todos los leads o crea uno nuevo.
+*   `GET, PUT, DELETE /api/leads/<id>/`: Obtiene, actualiza o elimina un lead específico.
+*   `GET /api/empleados/`: Lista los empleados.
+*   `GET /api/programas/`: Lista los programas académicos.
+*   `POST /api/matriculas/`: Crea una nueva matrícula (proceso de conversión de lead).
+*   `GET /api/finanzas/balance/?sede_id=1`: Obtiene un resumen financiero para una sede específica.
 
-*   **Lógica de Negocio Configurable:**
-    *   Toda regla de negocio que pueda cambiar con el tiempo será configurable desde el panel de administración, no escrita en el código.
-    *   **Ejemplo:** La asignación de una sede por defecto a un rol se gestionará con un campo `sede_defecto` en el modelo `RolEmpleado`, eliminando la necesidad de scripts manuales.
+## 5. Lógica de Negocio y Tareas Asincrónicas
 
-*   **Precisión en la Lógica de Dominio:**
-    *   Los cálculos que representan procesos del mundo real, como la planilla, se modelarán con alta fidelidad.
-    *   **Ejemplo:** El sistema de planilla incluirá el cálculo del **Impuesto a la Renta de 5ta Categoría** y modelará las diferentes **comisiones de las AFP** para reflejar la realidad del mercado peruano.
+*   **Automatizaciones en Modelos:** La lógica de negocio crítica (como la creación automática de `Ingresos` y `Gastos`) se mantendrá en los métodos `save()` de los modelos de Django para garantizar la consistencia de los datos, sin importar cómo se acceda a ellos.
+*   **Tareas Asincrónicas (Celery):** Para operaciones que pueden ser lentas o que no necesitan ser instantáneas, se utilizará Celery.
+    *   **Envío de Notificaciones Push:** Cuando se deba notificar a un alumno, se encolará una tarea en Celery para que un worker la procese en segundo plano, sin hacer esperar al usuario.
+    *   **Generación de Reportes:** La generación de reportes financieros complejos se ejecutará como una tarea asincrónica.
+    *   **Envío de Correos Masivos.**
 
-*   **Abstracción de la Base de Datos (ORM):**
-    *   Se priorizará el uso del **ORM de Django** sobre las consultas SQL directas para todas las interacciones con la base de datos.
-    *   **Ejemplo:** Las vistas complejas se optimizarán usando `select_related` y `prefetch_related` para garantizar la mantenibilidad, seguridad y legibilidad del código.
+## 6. Configuración y Despliegue (Docker)
 
-## 5. Scripts de Utilidad
+El entorno de desarrollo y producción estará completamente containerizado con Docker. El archivo `docker-compose.yml` orquestará los servicios:
+*   Un contenedor para la **aplicación de Django (Gunicorn)**.
+*   Un contenedor para la **base de datos PostgreSQL**.
+*   Un contenedor para el **broker de Celery (Redis)**.
+*   Un contenedor para los **workers de Celery**.
 
-El directorio `gestion/scripts/` contiene scripts útiles para la administración:
-
-*   **`crear_roles_iniciales.py`**: **(Recomendado)** Se debe ejecutar después de `migrate` en una base de datos limpia para crear los roles y permisos básicos necesarios para que la aplicación funcione correctamente.
-*   **`asignar_empleados_sedes.py`**: Asigna masivamente los empleados a su sede correspondiente según las reglas hardcodeadas en el script.
-*   **`verificar_permisos_rol.py`**: Script de debugging para verificar los permisos de un rol específico.
+Esto asegura que el entorno de desarrollo sea idéntico al de producción, eliminando problemas de consistencia.
